@@ -77,9 +77,10 @@ CREATE TABLE plants (
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
--- 5. Moisture Readings Table (Incoming hardware / simulator data)
+-- 5. Moisture Readings Table (Incoming hardware / simulator data with offline sync idempotency)
 CREATE TABLE moisture_readings (
     id INT AUTO_INCREMENT PRIMARY KEY,
+    client_uuid VARCHAR(64) NULL UNIQUE,
     plant_id INT NOT NULL,
     sensor_id VARCHAR(100) NOT NULL,
     moisture_level FLOAT NOT NULL,

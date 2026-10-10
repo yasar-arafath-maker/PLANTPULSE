@@ -1,5 +1,5 @@
 // ============================================================
-// PlantPulse — Cloud Backend API Configuration
+// PlantPulse — Cloud Backend API & Native Offline Sync Bridge
 // ============================================================
 
 (function () {
@@ -16,6 +16,14 @@
 
   // Determine Base API URL dynamically
   function computeBaseUrl() {
+    // 0. Check if native bridge provides stored URL
+    if (window.PlantPulseNative && typeof window.PlantPulseNative.getCloudApiUrl === 'function') {
+      const nativeUrl = window.PlantPulseNative.getCloudApiUrl();
+      if (nativeUrl && nativeUrl.trim()) {
+        return nativeUrl.trim().replace(/\/+$/, '');
+      }
+    }
+
     // A. Check if user configured a custom cloud URL in localStorage
     const saved = localStorage.getItem('pm_cloud_api_url');
     if (saved && saved.trim()) {
@@ -52,6 +60,9 @@
   window.setCloudApiUrl = function (url) {
     if (url && url.trim()) {
       localStorage.setItem('pm_cloud_api_url', url.trim());
+      if (window.PlantPulseNative && typeof window.PlantPulseNative.setCloudApiUrl === 'function') {
+        window.PlantPulseNative.setCloudApiUrl(url.trim());
+      }
     } else {
       localStorage.removeItem('pm_cloud_api_url');
     }
@@ -63,7 +74,86 @@
   };
 
   // ------------------------------------------------------------
-  // 2. TRANSPARENT FETCH INTERCEPTOR FOR BEARER TOKEN & CORS
+  // 2. OFFLINE-FIRST NATIVE BRIDGE HELPERS
+  // ------------------------------------------------------------
+  window.hasNativeBridge = function () {
+    return Boolean(window.PlantPulseNative && typeof window.PlantPulseNative.isNativeApp === 'function');
+  };
+
+  window.isAppOnline = function () {
+    if (window.hasNativeBridge() && typeof window.PlantPulseNative.isOnline === 'function') {
+      return window.PlantPulseNative.isOnline();
+    }
+    return navigator.onLine;
+  };
+
+  window.saveReadingToNative = function (plantId, sensorId, moistureLevel, status) {
+    if (window.hasNativeBridge() && typeof window.PlantPulseNative.saveMoistureReading === 'function') {
+      try {
+        const resStr = window.PlantPulseNative.saveMoistureReading(plantId, sensorId, moistureLevel, status);
+        return JSON.parse(resStr);
+      } catch (e) {
+        console.error('[PlantPulse] Native save error:', e);
+      }
+    }
+    return null;
+  };
+
+  window.getNativePlantReadings = function (plantId) {
+    if (window.hasNativeBridge() && typeof window.PlantPulseNative.getPlantReadingsJson === 'function') {
+      try {
+        const resStr = window.PlantPulseNative.getPlantReadingsJson(plantId);
+        return JSON.parse(resStr);
+      } catch (e) {
+        console.error('[PlantPulse] Native read error:', e);
+      }
+    }
+    return [];
+  };
+
+  window.cacheNativePlants = function (plants) {
+    if (window.hasNativeBridge() && typeof window.PlantPulseNative.cachePlants === 'function') {
+      try {
+        const jsonStr = typeof plants === 'string' ? plants : JSON.stringify(plants);
+        window.PlantPulseNative.cachePlants(jsonStr);
+      } catch (e) {}
+    }
+  };
+
+  window.getCachedNativePlants = function () {
+    if (window.hasNativeBridge() && typeof window.PlantPulseNative.getCachedPlants === 'function') {
+      try {
+        const str = window.PlantPulseNative.getCachedPlants();
+        return JSON.parse(str);
+      } catch (e) {}
+    }
+    return null;
+  };
+
+  window.getNativePendingCount = function () {
+    if (window.hasNativeBridge() && typeof window.PlantPulseNative.getPendingCount === 'function') {
+      return window.PlantPulseNative.getPendingCount();
+    }
+    return 0;
+  };
+
+  window.triggerNativeSync = function () {
+    if (window.hasNativeBridge() && typeof window.PlantPulseNative.triggerSyncNow === 'function') {
+      try {
+        return JSON.parse(window.PlantPulseNative.triggerSyncNow());
+      } catch (e) {}
+    }
+    return null;
+  };
+
+  // Sync stored token to native bridge
+  const storedToken = localStorage.getItem('pm_token');
+  if (storedToken && window.hasNativeBridge() && typeof window.PlantPulseNative.setAuthToken === 'function') {
+    window.PlantPulseNative.setAuthToken(storedToken);
+  }
+
+  // ------------------------------------------------------------
+  // 3. TRANSPARENT FETCH INTERCEPTOR FOR BEARER TOKEN & CORS
   // ------------------------------------------------------------
   const _nativeFetch = window.fetch;
   window.fetch = function (resource, init) {
@@ -91,5 +181,5 @@
     return _nativeFetch(resource, options);
   };
 
-  console.log(`[PlantPulse] Cloud API Base URL configured: ${BASE_URL}`);
+  console.log(`[PlantPulse] Cloud API Base URL: ${BASE_URL} (Native Bridge: ${window.hasNativeBridge()})`);
 })();

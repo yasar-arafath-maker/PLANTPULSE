@@ -9,10 +9,9 @@ $body = getBody();
 $name  = trim($body['name']  ?? '');
 $email = trim($body['email'] ?? '');
 $pass  = trim($body['password'] ?? '');
-$role  = trim($body['role'] ?? 'user');
-if (!in_array($role, ['user', 'admin'])) {
-    $role = 'user';
-}
+// Enforce role strictly to 'user' for public registration
+// Admin accounts must be created or promoted by existing administrators
+$role = 'user';
 
 // Validate
 if (empty($name) || empty($email) || empty($pass)) {

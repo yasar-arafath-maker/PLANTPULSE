@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Plant Detail — PlantPulse</title>
+  <meta name="description" content="View detailed moisture readings and history chart for your plant." />
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#0d1912" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <link rel="apple-touch-icon" href="assets/icon-192.png" />
+  <link rel="stylesheet" href="css/style.css" />
+  <script src="js/vendor/chart.umd.min.js"></script>
+
+</head>
+<body>
+<div class="bg-animated"></div>
+
+<div class="app-layout">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-icon">🌿</div>
+      <div>
+        <div class="logo-name">PlantPulse</div>
+        <div class="logo-tagline">Moisture Monitor</div>
+      </div>
+    </div>
+
+    <nav class="sidebar-nav">
+      <span class="nav-label">Main</span>
+      <a href="dashboard.html" class="nav-item">
+        <span class="nav-icon">📊</span> Dashboard
+      </a>
+      <a href="shop.html" class="nav-item">
+        <span class="nav-icon">🛒</span> Buy Sensor
+      </a>
+      <a href="my-orders.html" class="nav-item">
+        <span class="nav-icon">📦</span> My Sensor Orders
+      </a>
+      <a href="add-plant.html" class="nav-item">
+        <span class="nav-icon">➕</span> Add Plant
+      </a>
+
+      <span class="nav-label">Testing & Hardware</span>
+      <a href="simulator.html" class="nav-item">
+        <span class="nav-icon">⚡</span> Hardware Simulator
+      </a>
+      <a href="admin.html" class="nav-item" id="nav-admin" style="display:none">
+        <span class="nav-icon">🛠</span> Admin Studio
+      </a>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="user-info">
+        <div class="user-avatar" id="sidebar-avatar">?</div>
+        <div class="user-details">
+          <div class="user-name"  id="sidebar-user-name">Loading…</div>
+          <div class="user-email" id="sidebar-user-email"></div>
+        </div>
+      </div>
+      <button class="nav-item btn-full" id="logout-btn" style="border:none;background:none;text-align:left;width:100%">
+        <span class="nav-icon">🚪</span> Logout
+      </button>
+    </div>
+  </aside>
+
+  <!-- Main Content -->
+  <main class="main-content">
+
+    <!-- Top Bar -->
+    <div class="topbar">
+      <div>
+        <a href="dashboard.html" class="btn btn-secondary btn-sm" style="margin-bottom:12px;display:inline-flex">
+          ← Back to Dashboard
+        </a>
+        <h1 class="page-title" id="plant-name-detail">Loading…</h1>
+        <p class="page-subtitle" id="plant-type-detail"></p>
+      </div>
+      <div class="topbar-actions">
+        <div class="alert-bell" id="alert-bell" title="Alerts">
+          🔔
+          <div class="bell-badge" id="alert-badge"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Detail Grid -->
+    <div class="detail-grid">
+
+      <!-- Left: Big Gauge Card -->
+      <div class="detail-gauge-card">
+        <div style="font-size:52px;margin-bottom:4px" id="plant-emoji-big">🌿</div>
+
+        <div class="detail-gauge-wrap">
+          <svg class="gauge-svg" viewBox="0 0 120 120" style="width:100%;height:100%">
+            <circle class="gauge-bg" cx="60" cy="60" r="54" />
+            <circle id="big-gauge-fill" class="gauge-fill" cx="60" cy="60" r="54"
+              stroke="#3ddc6a"
+              stroke-dasharray="339.29"
+              stroke-dashoffset="339.29"
+              style="transition: stroke-dashoffset 1.5s cubic-bezier(.4,0,.2,1)"
+            />
+          </svg>
+          <div class="gauge-center">
+            <div class="detail-gauge-pct" id="big-gauge-pct" style="font-size:36px;font-weight:800;color:var(--text-1)">—</div>
+            <div class="detail-gauge-unit" style="font-size:14px;color:var(--text-2)">Moisture</div>
+          </div>
+        </div>
+
+        <div id="big-gauge-status" class="gauge-status-badge badge-good" style="margin:0 auto 20px">— No Data</div>
+
+        <!-- Meta grid -->
+        <div class="detail-meta-grid">
+          <div class="detail-meta-item">
+            <div class="detail-meta-label">📍 Location</div>
+            <div class="detail-meta-value" id="detail-location">—</div>
+          </div>
+          <div class="detail-meta-item">
+            <div class="detail-meta-label">🕐 Last Reading</div>
+            <div class="detail-meta-value" id="detail-last-read">—</div>
+          </div>
+          <div class="detail-meta-item">
+            <div class="detail-meta-label">💧 Min Ideal</div>
+            <div class="detail-meta-value" id="detail-min-moist">—</div>
+          </div>
+          <div class="detail-meta-item">
+            <div class="detail-meta-label">💧 Max Ideal</div>
+            <div class="detail-meta-value" id="detail-max-moist">—</div>
+          </div>
+        </div>
+
+        <div class="detail-meta-item" style="text-align:left">
+          <div class="detail-meta-label">📡 Sensor ID</div>
+          <div class="detail-meta-value" id="detail-sensor-id" style="font-size:13px;font-family:monospace;word-break:break-all">—</div>
+        </div>
+
+        <div style="margin-top:16px">
+          <a href="dashboard.html" class="btn btn-secondary btn-full">← Dashboard</a>
+        </div>
+      </div>
+
+      <!-- Right: Chart -->
+      <div>
+        <div class="chart-card">
+          <div class="chart-title">📈 Moisture History</div>
+          <div class="chart-subtitle">Last 50 sensor readings</div>
+          <div class="chart-wrap">
+            <canvas id="moisture-chart"></canvas>
+          </div>
+        </div>
+
+        <!-- Alerts for this plant -->
+        <div class="alerts-panel" style="margin-top:24px">
+          <div class="section-header" style="margin-bottom:16px">
+            <h2 class="section-title">🔔 Recent Alerts</h2>
+          </div>
+          <div class="alerts-list" id="alerts-list">
+            <div class="spinner"></div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+  </main>
+</div>
+
+<script src="js/config.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/plant-detail.js"></script>
+
+<!-- Mobile Bottom Navigation -->
+<nav class="mobile-bottom-nav">
+  <a href="dashboard.html" class="active"><span class="nav-icon">📊</span>Dashboard</a>
+  <a href="shop.html"><span class="nav-icon">🛒</span>Shop</a>
+  <a href="add-plant.html"><span class="nav-icon">➕</span>Add Plant</a>
+  <a href="my-orders.html"><span class="nav-icon">📦</span>Orders</a>
+  <a href="simulator.html"><span class="nav-icon">⚡</span>Simulate</a>
+</nav>
+
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('./sw.js')
+        .then(reg => console.log('Service Worker registered:', reg.scope))
+        .catch(err => console.log('Service Worker registration failed:', err));
+    });
+  }
+</script>
+</body>
+</html>
+

@@ -20,6 +20,8 @@ android-app/**/*.aab
 scratch_test_e2e.php
 test_*.php
 scratch/
+_backup_pre_remediation/
+dev_tools/
 *.log
 
 # 4. OS & Editor caches

@@ -39,11 +39,16 @@ $plantId = $plant['id'];
 $userId  = $plant['user_id'];
 $status  = getMoistureStatus($moistureLevel, $plant['ideal_moisture_min'], $plant['ideal_moisture_max']);
 
+$clientUuid = trim($body['client_uuid'] ?? '');
+if (empty($clientUuid)) {
+    $clientUuid = null;
+}
+
 // Insert moisture reading
 $stmt = $pdo->prepare(
-    'INSERT INTO moisture_readings (plant_id, sensor_id, moisture_level, status) VALUES (?, ?, ?, ?)'
+    'INSERT INTO moisture_readings (client_uuid, plant_id, sensor_id, moisture_level, status) VALUES (?, ?, ?, ?, ?)'
 );
-$stmt->execute([$plantId, $sensorId, $moistureLevel, $status]);
+$stmt->execute([$clientUuid, $plantId, $sensorId, $moistureLevel, $status]);
 
 // Create alert if moisture is critical or low
 if ($status === 'critical' || $status === 'low') {

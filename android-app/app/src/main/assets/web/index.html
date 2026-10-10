@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PlantPulse — Smart Plant Moisture Monitor (EVS)</title>
+  <meta name="description" content="Monitor your plant's soil moisture in real-time with smart sensor alerts. Keep your plants healthy effortlessly." />
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#0d1912" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <link rel="apple-touch-icon" href="assets/icon-192.png" />
+  <link rel="stylesheet" href="css/style.css" />
+
+</head>
+<body>
+<div class="bg-animated"></div>
+
+<div class="auth-container">
+  <div class="auth-card">
+    <div class="auth-logo">
+      <div class="logo-icon">🌿</div>
+      <div>
+        <div class="logo-text">PlantPulse</div>
+        <div class="logo-sub">Smart Moisture Monitoring & Sensor E-Shop</div>
+      </div>
+    </div>
+
+    <h1 class="auth-title">Welcome back 👋</h1>
+    <p class="auth-subtitle">Login to monitor your plants or manage hardware sensor orders.</p>
+
+    <div class="alert-msg" id="login-error"></div>
+
+    <form id="login-form" novalidate>
+      <div class="form-group">
+        <label class="form-label" for="email">Email Address</label>
+        <input
+          type="email"
+          id="email"
+          class="form-control"
+          placeholder="you@example.com"
+          autocomplete="email"
+          required
+        />
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="password">Password</label>
+        <input
+          type="password"
+          id="password"
+          class="form-control"
+          placeholder="Enter your password"
+          autocomplete="current-password"
+          required
+        />
+      </div>
+
+      <button type="submit" id="login-btn" class="btn btn-primary btn-full" style="margin-top:8px">
+        Login to Dashboard
+      </button>
+    </form>
+
+    <!-- Demo Quick Login Buttons -->
+    <div style="margin-top:20px; padding-top:16px; border-top:1px solid var(--border)">
+      <div style="font-size:12px; color:var(--text-3); text-align:center; margin-bottom:10px; font-weight:600; text-transform:uppercase; letter-spacing:0.05em">
+        ⚡ Quick Demo Login
+      </div>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px">
+        <button type="button" class="btn btn-secondary btn-sm" id="demo-user-btn" style="font-size:12px">
+          👤 User (Buyer)
+        </button>
+        <button type="button" class="btn btn-secondary btn-sm" id="demo-admin-btn" style="font-size:12px; border-color:var(--green-border)">
+          🛠 Admin Portal
+        </button>
+      </div>
+    </div>
+
+    <div class="auth-link" style="margin-top:16px">
+      Don't have an account? <a href="register.html">Create Buyer Account</a>
+    </div>
+
+    <!-- Cloud Backend Switcher -->
+    <div style="text-align:center;margin-top:18px;font-size:12px;color:var(--text-3);border-top:1px solid rgba(255,255,255,0.06);padding-top:14px">
+      <span>Cloud API: <strong id="api-status-label" style="color:var(--primary)">Detecting...</strong></span>
+      &nbsp;•&nbsp;
+      <a href="javascript:void(0)" id="change-api-btn" style="color:var(--text-2);text-decoration:underline">Configure URL</a>
+    </div>
+  </div>
+</div>
+
+<script src="js/config.js"></script>
+<script>
+  // Display active Cloud API endpoint
+  const statusLabel = document.getElementById('api-status-label');
+  if (statusLabel) {
+    try {
+      const urlObj = new URL(BASE_URL, window.location.origin);
+      statusLabel.textContent = urlObj.host || 'Local/Cloud';
+    } catch(e) {
+      statusLabel.textContent = BASE_URL;
+    }
+  }
+
+  document.getElementById('change-api-btn')?.addEventListener('click', () => {
+    const current = localStorage.getItem('pm_cloud_api_url') || BASE_URL;
+    const input = prompt(
+      "Enter Cloud Backend API URL (e.g. https://plantpulse.free.nf/api or https://plantpulse.onrender.com/api):\nLeave empty to reset to default:",
+      current
+    );
+    if (input !== null) {
+      window.setCloudApiUrl(input.trim());
+    }
+  });
+
+  // If already logged in, redirect based on role
+  (async () => {
+    try {
+      const res  = await fetch(`${BASE_URL}/auth/check.php`);
+      const data = await res.json();
+      if (data.authenticated) {
+        if (data.user && data.user.role === 'admin') {
+          window.location.href = 'admin.html';
+        } else {
+          window.location.href = 'dashboard.html';
+        }
+      }
+    } catch (e) {}
+  })();
+
+  // Quick Admin demo fill
+  document.getElementById('demo-admin-btn')?.addEventListener('click', () => {
+    document.getElementById('email').value = 'admin@plantmonitor.com';
+    document.getElementById('password').value = 'admin123';
+    document.getElementById('login-form').dispatchEvent(new Event('submit'));
+  });
+
+  // Quick User demo fill
+  document.getElementById('demo-user-btn')?.addEventListener('click', () => {
+    document.getElementById('email').value = 'buyer@example.com';
+    document.getElementById('password').value = 'user123';
+  });
+
+  document.getElementById('login-form').addEventListener('submit', async e => {
+    e.preventDefault();
+    const errEl  = document.getElementById('login-error');
+    const btn    = document.getElementById('login-btn');
+    const email  = document.getElementById('email').value.trim();
+    const pass   = document.getElementById('password').value;
+
+    if (!email || !pass) {
+      errEl.textContent = 'Please enter your email and password.';
+      errEl.className = 'alert-msg show error';
+      return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = '⏳ Logging in…';
+    errEl.className = 'alert-msg';
+
+    try {
+      const res  = await fetch(`${BASE_URL}/auth/login.php`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password: pass })
+      });
+      const data = await res.json();
+
+      if (data.success) {
+        localStorage.setItem('pm_user', JSON.stringify(data.user));
+        if (data.token) {
+          localStorage.setItem('pm_token', data.token);
+        }
+        if (data.user.role === 'admin') {
+          window.location.href = 'admin.html';
+        } else {
+          window.location.href = 'dashboard.html';
+        }
+      } else {
+        errEl.textContent = data.message;
+        errEl.className = 'alert-msg show error';
+        btn.disabled = false;
+        btn.textContent = 'Login to Dashboard';
+      }
+    } catch (err) {
+      errEl.textContent = 'Connection error. Check cloud backend or server status.';
+      errEl.className = 'alert-msg show error';
+      btn.disabled = false;
+      btn.textContent = 'Login to Dashboard';
+    }
+  });
+</script>
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('./sw.js')
+        .then(reg => console.log('Service Worker registered:', reg.scope))
+        .catch(err => console.log('Service Worker registration failed:', err));
+    });
+  }
+</script>
+</body>
+</html>
+

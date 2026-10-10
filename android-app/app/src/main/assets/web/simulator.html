@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Hardware Sensor Simulator — PlantPulse</title>
+  <meta name="description" content="Simulate real-time soil moisture sensor feeds and test automated user alert intimations." />
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#0d1912" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <link rel="apple-touch-icon" href="assets/icon-192.png" />
+  <link rel="stylesheet" href="css/style.css" />
+
+</head>
+<body>
+<div class="bg-animated"></div>
+
+<div class="app-layout">
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-icon">🌿</div>
+      <div>
+        <div class="logo-name">PlantPulse</div>
+        <div class="logo-tagline">Moisture Monitor</div>
+      </div>
+    </div>
+
+    <nav class="sidebar-nav">
+      <span class="nav-label">Main</span>
+      <a href="dashboard.html" class="nav-item">
+        <span class="nav-icon">📊</span> Dashboard
+      </a>
+      <a href="shop.html" class="nav-item">
+        <span class="nav-icon">🛒</span> Buy Sensor
+      </a>
+      <a href="my-orders.html" class="nav-item">
+        <span class="nav-icon">📦</span> My Sensor Orders
+      </a>
+
+      <span class="nav-label">Testing & Hardware</span>
+      <a href="simulator.html" class="nav-item active">
+        <span class="nav-icon">⚡</span> Hardware Simulator
+      </a>
+      <a href="admin.html" class="nav-item" id="nav-admin" style="display:none">
+        <span class="nav-icon">🛠</span> Admin Studio
+      </a>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="user-info">
+        <div class="user-avatar" id="sidebar-avatar">?</div>
+        <div class="user-details">
+          <div class="user-name"  id="sidebar-user-name">Loading…</div>
+          <div class="user-email" id="sidebar-user-email"></div>
+        </div>
+      </div>
+      <button class="nav-item btn-full" id="logout-btn" style="border:none;background:none;text-align:left;width:100%">
+        <span class="nav-icon">🚪</span> Logout
+      </button>
+    </div>
+  </aside>
+
+  <!-- Main Content -->
+  <main class="main-content">
+    <div class="topbar">
+      <div>
+        <h1 class="page-title">Hardware Sensor Simulator ⚡</h1>
+        <p class="page-subtitle">Simulate physical soil moisture sensor readings & verify live alert intimations</p>
+      </div>
+      <div class="topbar-actions">
+        <a href="dashboard.html" class="btn btn-secondary">
+          <span>📊</span> View Live Dashboard
+        </a>
+      </div>
+    </div>
+
+    <div style="max-width:720px; margin:0 auto">
+      <div class="simulator-box">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px">
+          <div>
+            <h3 style="font-family:var(--font-head); font-size:20px; font-weight:700; color:var(--text-1)">
+              📡 Soil Moisture Transmitter
+            </h3>
+            <p style="font-size:13px; color:var(--text-2)">Simulates ESP8266/Arduino sensor telemetry sent to backend</p>
+          </div>
+          <span style="font-size:24px">📶</span>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="sim-plant-select">Select Plant & Coded Sensor</label>
+          <select id="sim-plant-select" class="form-control">
+            <option value="">Loading your plants & sensors…</option>
+          </select>
+        </div>
+
+        <!-- Plant Calibration Range Display -->
+        <div id="sim-calibration-info" style="display:none; background:var(--bg-2); border:1px solid var(--border); border-radius:var(--radius); padding:12px 16px; margin-bottom:20px; font-size:13px; color:var(--text-2)">
+          Ideal Coded Range: <strong id="sim-min-limit" style="color:var(--green)">40%</strong> min to <strong id="sim-max-limit" style="color:var(--green)">70%</strong> max
+        </div>
+
+        <!-- Slider Section -->
+        <div class="sim-slider-wrap">
+          <div class="sim-slider-val" id="sim-val-display">50%</div>
+          <div style="font-size:13px; color:var(--text-3); text-align:center; margin-bottom:12px" id="sim-status-text">
+            Optimal Soil Hydration
+          </div>
+
+          <div class="range-slider-row">
+            <span style="font-size:14px; color:var(--text-3)">0% (Dry)</span>
+            <input type="range" id="sim-moisture-slider" min="0" max="100" value="50" />
+            <span style="font-size:14px; color:var(--text-3)">100% (Wet)</span>
+          </div>
+
+          <!-- Quick Presets -->
+          <div class="sim-presets">
+            <button class="sim-preset-btn" onclick="setSimValue(15)">
+              🌵 Dry (15%)
+            </button>
+            <button class="sim-preset-btn" onclick="setSimValue(32)">
+              💧 Low (32%)
+            </button>
+            <button class="sim-preset-btn" onclick="setSimValue(58)">
+              🌸 Optimal (58%)
+            </button>
+            <button class="sim-preset-btn" onclick="setSimValue(88)">
+              🌊 High (88%)
+            </button>
+          </div>
+        </div>
+
+        <button class="btn btn-primary btn-full" id="sim-send-btn" style="padding:14px; font-size:16px">
+          📡 Transmit Moisture Reading
+        </button>
+
+        <!-- Simulated Response Box -->
+        <div id="sim-result-box" style="display:none; margin-top:20px; padding:16px; border-radius:var(--radius); border:1px solid var(--border); background:var(--bg-2); animation:fadeInCard 0.3s ease both">
+          <div style="font-weight:700; font-size:14px; color:var(--green-light); margin-bottom:4px" id="sim-res-title">
+            Reading Transmitted
+          </div>
+          <div style="font-size:13px; color:var(--text-2)" id="sim-res-msg"></div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script src="js/config.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/simulator.js"></script>
+
+<!-- Mobile Bottom Navigation -->
+<nav class="mobile-bottom-nav">
+  <a href="dashboard.html"><span class="nav-icon">📊</span>Dashboard</a>
+  <a href="shop.html"><span class="nav-icon">🛒</span>Shop</a>
+  <a href="add-plant.html"><span class="nav-icon">➕</span>Add Plant</a>
+  <a href="my-orders.html"><span class="nav-icon">📦</span>Orders</a>
+  <a href="simulator.html" class="active"><span class="nav-icon">⚡</span>Simulate</a>
+</nav>
+
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('./sw.js')
+        .then(reg => console.log('Service Worker registered:', reg.scope))
+        .catch(err => console.log('Service Worker registration failed:', err));
+    });
+  }
+</script>
+</body>
+</html>
+

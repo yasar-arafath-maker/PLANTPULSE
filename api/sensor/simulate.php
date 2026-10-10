@@ -27,12 +27,44 @@ if (!$plant) {
     respond(['success' => false, 'message' => 'Plant not found'], 404);
 }
 
+// Enforce plant ownership or administrator authorization
+$currentUserId = $_SESSION['user_id'] ?? 0;
+if ((int)$plant['user_id'] !== (int)$currentUserId && !isAdmin()) {
+    respond(['success' => false, 'message' => 'Access denied: You can only simulate readings for plants registered to your account.'], 403);
+}
+
+$clientUuid = trim($body['client_uuid'] ?? '');
+if (empty($clientUuid)) {
+    $clientUuid = 'sim_' . bin2hex(random_bytes(16));
+}
+if (strlen($clientUuid) > 64) {
+    $clientUuid = substr($clientUuid, 0, 64);
+}
+
+// Check existing for idempotency
+$stmtCheck = $pdo->prepare('SELECT id, status FROM moisture_readings WHERE client_uuid = ?');
+$stmtCheck->execute([$clientUuid]);
+$existingReading = $stmtCheck->fetch();
+
+if ($existingReading) {
+    respond([
+        'success'        => true,
+        'message'        => 'Reading already recorded (idempotent).',
+        'reading_id'     => (int)$existingReading['id'],
+        'client_uuid'    => $clientUuid,
+        'moisture_level' => $moistureLevel,
+        'status'         => $existingReading['status'],
+        'duplicate'      => true
+    ]);
+}
+
 $status = getMoistureStatus($moistureLevel, $plant['ideal_moisture_min'], $plant['ideal_moisture_max']);
 
 try {
-    // 1. Record moisture reading
-    $stmt = $pdo->prepare('INSERT INTO moisture_readings (plant_id, sensor_id, moisture_level, status) VALUES (?, ?, ?, ?)');
-    $stmt->execute([$plant['id'], $plant['sensor_id'], $moistureLevel, $status]);
+    // 1. Record moisture reading with client_uuid
+    $stmt = $pdo->prepare('INSERT INTO moisture_readings (client_uuid, plant_id, sensor_id, moisture_level, status) VALUES (?, ?, ?, ?, ?)');
+    $stmt->execute([$clientUuid, $plant['id'], $plant['sensor_id'], $moistureLevel, $status]);
+    $newReadingId = (int)$pdo->lastInsertId();
 
     // 2. Generate immediate intimation alert if out of range
     $alertCreated = false;
@@ -60,11 +92,14 @@ try {
     respond([
         'success'        => true,
         'message'        => "Simulated moisture reading ({$moistureLevel}%) transmitted successfully!",
+        'reading_id'     => $newReadingId,
+        'client_uuid'    => $clientUuid,
         'moisture_level' => $moistureLevel,
         'status'         => $status,
         'alert_triggered'=> $alertCreated,
         'alert_message'  => $alertMsg
     ]);
 } catch (Exception $e) {
-    respond(['success' => false, 'message' => 'Failed to simulate sensor feed: ' . $e->getMessage()], 500);
+    error_log('[PlantPulse Simulate Error] ' . $e->getMessage());
+    respond(['success' => false, 'message' => 'Failed to simulate sensor feed. Please try again.'], 500);
 }

@@ -21,7 +21,7 @@ if (!$plant) {
 
 // Fetch readings newest-first, then reverse for chart
 $stmt = $pdo->prepare(
-    'SELECT moisture_level, status, timestamp
+    'SELECT id, client_uuid, moisture_level, status, timestamp
      FROM moisture_readings
      WHERE plant_id = ?
      ORDER BY timestamp DESC

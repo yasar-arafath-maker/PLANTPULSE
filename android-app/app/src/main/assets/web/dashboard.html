@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dashboard — PlantPulse</title>
+  <meta name="description" content="Monitor all your plants' soil moisture levels in real-time from one dashboard." />
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#0d1912" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <link rel="apple-touch-icon" href="assets/icon-192.png" />
+  <link rel="stylesheet" href="css/style.css" />
+
+</head>
+<body>
+<div class="bg-animated"></div>
+
+<!-- ===== App Layout ===== -->
+<div class="app-layout">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-icon">🌿</div>
+      <div>
+        <div class="logo-name">PlantPulse</div>
+        <div class="logo-tagline">Moisture Monitor</div>
+      </div>
+    </div>
+
+    <nav class="sidebar-nav">
+      <span class="nav-label">Main</span>
+      <a href="dashboard.html" class="nav-item active" id="nav-dashboard">
+        <span class="nav-icon">📊</span> Dashboard
+      </a>
+      <a href="shop.html" class="nav-item">
+        <span class="nav-icon">🛒</span> Buy Sensor
+      </a>
+      <a href="my-orders.html" class="nav-item">
+        <span class="nav-icon">📦</span> My Sensor Orders
+      </a>
+      <a href="add-plant.html" class="nav-item" id="nav-add">
+        <span class="nav-icon">➕</span> Add Plant
+      </a>
+
+      <span class="nav-label">Testing & Hardware</span>
+      <a href="simulator.html" class="nav-item">
+        <span class="nav-icon">⚡</span> Hardware Simulator
+      </a>
+      <a href="admin.html" class="nav-item" id="nav-admin" style="display:none">
+        <span class="nav-icon">🛠</span> Admin Studio
+      </a>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="user-info">
+        <div class="user-avatar" id="sidebar-avatar">?</div>
+        <div class="user-details">
+          <div class="user-name"  id="sidebar-user-name">Loading…</div>
+          <div class="user-email" id="sidebar-user-email"></div>
+        </div>
+      </div>
+      <button class="nav-item btn-full" id="logout-btn" style="border:none;background:none;text-align:left;width:100%">
+        <span class="nav-icon">🚪</span> Logout
+      </button>
+    </div>
+  </aside>
+
+  <!-- Main Content -->
+  <main class="main-content">
+
+    <!-- Top Bar -->
+    <div class="topbar">
+      <div>
+        <h1 class="page-title">Your Plants 🌱</h1>
+        <p class="page-subtitle">Real-time soil moisture monitoring</p>
+      </div>
+      <div class="topbar-actions">
+        <div class="alert-bell" id="alert-bell" title="View Alerts">
+          🔔
+          <div class="bell-badge" id="alert-badge"></div>
+        </div>
+        <a href="add-plant.html" class="btn btn-primary">
+          <span>➕</span> Add Plant
+        </a>
+      </div>
+    </div>
+
+    <!-- Stats Row -->
+    <div class="stats-row">
+      <div class="stat-card">
+        <div class="stat-icon green">🌿</div>
+        <div class="stat-info">
+          <div class="stat-value" id="stat-total">—</div>
+          <div class="stat-label">Total Plants</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon green">✅</div>
+        <div class="stat-info">
+          <div class="stat-value" id="stat-healthy">—</div>
+          <div class="stat-label">Healthy</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon orange">💧</div>
+        <div class="stat-info">
+          <div class="stat-value" id="stat-low">—</div>
+          <div class="stat-label">Needs Water</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon red">🚨</div>
+        <div class="stat-info">
+          <div class="stat-value" id="stat-critical">—</div>
+          <div class="stat-label">Critical</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Plants Section -->
+    <div class="section-header">
+      <h2 class="section-title">All Plants</h2>
+      <span style="font-size:12px;color:var(--text-3)">Auto-refreshes every 30s 🔄</span>
+    </div>
+
+    <div id="loading-spinner" class="spinner"></div>
+    <div class="plants-grid" id="plants-grid"></div>
+
+    <!-- Alerts Section -->
+    <div id="alerts-section" style="margin-top:40px">
+      <div class="section-header">
+        <h2 class="section-title">🔔 Recent Alerts</h2>
+        <button class="btn btn-secondary btn-sm" id="mark-read-btn">Mark all read</button>
+      </div>
+      <div class="alerts-panel">
+        <div class="alerts-list" id="alerts-list">
+          <div class="spinner"></div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal-overlay" id="delete-modal">
+  <div class="modal">
+    <div class="modal-title">🗑 Delete Plant</div>
+    <p style="color:var(--text-2);font-size:15px">
+      Are you sure you want to delete <strong id="delete-plant-name" style="color:var(--text-1)"></strong>?
+      <br><span style="font-size:13px;margin-top:8px;display:block;color:var(--text-3)">
+        All moisture readings and alerts will be permanently removed.
+      </span>
+    </p>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" id="cancel-delete-btn">Cancel</button>
+      <button class="btn btn-danger" id="confirm-delete-btn">Yes, Delete</button>
+    </div>
+  </div>
+</div>
+
+<script src="js/config.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/dashboard.js"></script>
+<script>
+  // Load alerts in the bottom section
+  async function loadDashboardAlerts() {
+    try {
+      const res  = await fetch(`${BASE_URL}/alerts/list.php`);
+      const data = await res.json();
+      const list = document.getElementById('alerts-list');
+      if (!list) return;
+
+      if (!data.success || data.alerts.length === 0) {
+        list.innerHTML = `<p style="color:var(--text-3);font-size:14px;text-align:center;padding:24px">
+          No alerts yet — your plants are happy! 🎉</p>`;
+        return;
+      }
+
+      list.innerHTML = data.alerts.slice(0, 15).map(alert => {
+        const icon = { critical:'🔴', low:'🟠', high:'🔵', info:'🟢' }[alert.alert_type] || '🔔';
+        return `
+          <div class="alert-item type-${alert.alert_type} ${alert.is_read==0?'unread':''}">
+            <div class="alert-icon">${icon}</div>
+            <div class="alert-content">
+              <div class="alert-text">${alert.plant_emoji || ''} ${alert.message}</div>
+              <div class="alert-time">${relativeTime(alert.created_at)}</div>
+            </div>
+          </div>`;
+      }).join('');
+    } catch (err) {}
+  }
+
+  document.getElementById('mark-read-btn')?.addEventListener('click', async () => {
+    await fetch(`${BASE_URL}/alerts/mark_read.php`, { method: 'POST' });
+    document.getElementById('alert-badge')?.classList.remove('show');
+    showToast('All alerts marked as read', 'success');
+    await loadDashboardAlerts();
+  });
+
+  // Load alerts after auth
+  document.addEventListener('DOMContentLoaded', () => {
+    setTimeout(loadDashboardAlerts, 1200);
+  });
+
+  // Alert bell scrolls to section
+  document.getElementById('alert-bell')?.addEventListener('click', () => {
+    document.getElementById('alerts-section')?.scrollIntoView({ behavior: 'smooth' });
+  });
+</script>
+
+<!-- Mobile Bottom Navigation -->
+<nav class="mobile-bottom-nav">
+  <a href="dashboard.html" class="active"><span class="nav-icon">📊</span>Dashboard</a>
+  <a href="shop.html"><span class="nav-icon">🛒</span>Shop</a>
+  <a href="add-plant.html"><span class="nav-icon">➕</span>Add Plant</a>
+  <a href="my-orders.html"><span class="nav-icon">📦</span>Orders</a>
+  <a href="simulator.html"><span class="nav-icon">⚡</span>Simulate</a>
+</nav>
+
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('./sw.js')
+        .then(reg => console.log('Service Worker registered:', reg.scope))
+        .catch(err => console.log('Service Worker registration failed:', err));
+    });
+  }
+</script>
+</body>
+</html>
+

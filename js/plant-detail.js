@@ -32,15 +32,31 @@ async function loadDetail() {
   try {
     const res  = await fetch(`${BASE_URL}/plants/list.php`);
     const data = await res.json();
-    if (!data.success) return;
-
-    const plant = data.plants.find(p => p.id == plantId);
-    if (!plant) { redirectTo('dashboard.html'); return; }
-
-    renderDetail(plant);
+    if (data.success) {
+      const plant = data.plants.find(p => p.id == plantId);
+      if (plant) {
+        renderDetail(plant);
+        return;
+      }
+    }
   } catch (err) {
-    showToast('Failed to load plant data', 'error');
+    console.warn('[PlantPulse] Detail network error, checking cached plants:', err);
   }
+
+  // Offline Fallback: check cached plants
+  if (typeof window.getCachedNativePlants === 'function') {
+    const cached = window.getCachedNativePlants();
+    if (cached) {
+      const plant = cached.find(p => p.id == plantId);
+      if (plant) {
+        renderDetail(plant);
+        showToast('📡 Offline Mode: Loaded plant from local cache', 'info');
+        return;
+      }
+    }
+  }
+
+  showToast('Failed to load plant data', 'error');
 }
 
 function renderDetail(plant) {
@@ -87,13 +103,45 @@ function renderDetail(plant) {
 
 // ===== Load history & render chart =====
 async function loadHistory() {
+  let combinedReadings = [];
+
   try {
     const res  = await fetch(`${BASE_URL}/readings/history.php?plant_id=${plantId}&limit=50`);
     const data = await res.json();
-    if (!data.success) return;
+    if (data.success && Array.isArray(data.readings)) {
+      combinedReadings = data.readings;
+    }
+  } catch (err) {
+    console.warn('[PlantPulse] Failed to load server history, falling back to local storage:', err);
+  }
 
-    renderChart(data.readings);
-  } catch (err) {}
+  // Merge any pending local readings from native SQLite
+  if (typeof window.getNativePlantReadings === 'function') {
+    const localReadings = window.getNativePlantReadings(plantId);
+    if (Array.isArray(localReadings) && localReadings.length > 0) {
+      // Collect existing client_uuids to avoid duplicates
+      const existingUuids = new Set(combinedReadings.map(r => r.client_uuid).filter(Boolean));
+      for (const lr of localReadings) {
+        if (!existingUuids.has(lr.client_uuid)) {
+          combinedReadings.push({
+            id: lr.server_id || null,
+            client_uuid: lr.client_uuid,
+            moisture_level: lr.moisture_level,
+            status: lr.status,
+            timestamp: new Date(lr.timestamp).toISOString(),
+            is_offline_pending: lr.sync_status === 'PENDING'
+          });
+        }
+      }
+    }
+  }
+
+  // Sort chronologically for chart display
+  combinedReadings.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+
+  if (combinedReadings.length > 0) {
+    renderChart(combinedReadings);
+  }
 }
 
 function renderChart(readings) {

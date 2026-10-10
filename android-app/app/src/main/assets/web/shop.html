@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sensor Store — PlantPulse (EVS)</title>
+  <meta name="description" content="Buy specialized soil moisture sensors for your Rose, Jasmine, or house plants in Indian Rupees." />
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#0d1912" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <link rel="apple-touch-icon" href="assets/icon-192.png" />
+  <link rel="stylesheet" href="css/style.css" />
+
+</head>
+<body>
+<div class="bg-animated"></div>
+
+<div class="app-layout">
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-icon">🌿</div>
+      <div>
+        <div class="logo-name">PlantPulse</div>
+        <div class="logo-tagline">Moisture Monitor</div>
+      </div>
+    </div>
+
+    <nav class="sidebar-nav">
+      <span class="nav-label">Main</span>
+      <a href="dashboard.html" class="nav-item">
+        <span class="nav-icon">📊</span> Dashboard
+      </a>
+      <a href="shop.html" class="nav-item active">
+        <span class="nav-icon">🛒</span> Buy Sensor
+      </a>
+      <a href="my-orders.html" class="nav-item">
+        <span class="nav-icon">📦</span> My Sensor Orders
+      </a>
+      <a href="add-plant.html" class="nav-item">
+        <span class="nav-icon">➕</span> Add Plant
+      </a>
+
+      <span class="nav-label">Testing & Hardware</span>
+      <a href="simulator.html" class="nav-item">
+        <span class="nav-icon">⚡</span> Hardware Simulator
+      </a>
+      <a href="admin.html" class="nav-item" id="nav-admin" style="display:none">
+        <span class="nav-icon">🛠</span> Admin Studio
+      </a>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="user-info">
+        <div class="user-avatar" id="sidebar-avatar">?</div>
+        <div class="user-details">
+          <div class="user-name"  id="sidebar-user-name">Loading…</div>
+          <div class="user-email" id="sidebar-user-email"></div>
+        </div>
+      </div>
+      <button class="nav-item btn-full" id="logout-btn" style="border:none;background:none;text-align:left;width:100%">
+        <span class="nav-icon">🚪</span> Logout
+      </button>
+    </div>
+  </aside>
+
+  <!-- Main Content -->
+  <main class="main-content">
+    <div class="topbar">
+      <div>
+        <h1 class="page-title">Hardware Sensor Store 🛒</h1>
+        <p class="page-subtitle">Choose your plant and order a suitable custom-coded moisture sensor kit</p>
+      </div>
+      <div class="topbar-actions">
+        <a href="my-orders.html" class="btn btn-secondary">
+          <span>📦</span> View My Orders
+        </a>
+      </div>
+    </div>
+
+    <!-- How it works box -->
+    <div class="sensor-info-box" style="margin-bottom:24px">
+      <h4>💡 Buy Sensor Based On Your Plant Type</h4>
+      <p>Select your plant type below (e.g. <strong>Rose, Jasmine, Succulent, Fern</strong>). Our <strong>Admin Hardware Engineers</strong> will program & code the sensor's moisture calibration range specifically for your plant before dispatch!</p>
+    </div>
+
+    <!-- Plant Category Filters -->
+    <div style="display:flex; gap:10px; margin-bottom:24px; overflow-x:auto; padding-bottom:8px" id="plant-filter-bar">
+      <button class="btn btn-secondary btn-sm active-filter" onclick="filterCatalog('All', this)">🌱 All Sensors</button>
+      <button class="btn btn-secondary btn-sm" onclick="filterCatalog('Rose', this)">🌹 Rose Sensor</button>
+      <button class="btn btn-secondary btn-sm" onclick="filterCatalog('Jasmine', this)">🌸 Jasmine Sensor</button>
+      <button class="btn btn-secondary btn-sm" onclick="filterCatalog('Succulent', this)">🌵 Succulent Sensor</button>
+      <button class="btn btn-secondary btn-sm" onclick="filterCatalog('Fern', this)">🌿 Fern Sensor</button>
+      <button class="btn btn-secondary btn-sm" onclick="filterCatalog('General', this)">🪴 General Houseplants</button>
+    </div>
+
+    <!-- Catalog Section -->
+    <div style="margin-bottom: 24px;">
+      <div id="loading-spinner" class="spinner"></div>
+      <div class="shop-grid" id="shop-grid"></div>
+    </div>
+  </main>
+</div>
+
+<!-- Checkout & Payment Modal -->
+<div class="modal-overlay" id="checkout-modal">
+  <div class="modal" style="max-width:580px">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px">
+      <div class="modal-title" style="margin:0">🛒 Checkout & Payment (INR ₹)</div>
+      <button id="close-modal-btn" style="background:none; border:none; color:var(--text-3); font-size:20px; cursor:pointer">&times;</button>
+    </div>
+
+    <div class="alert-msg" id="checkout-error"></div>
+
+    <form id="checkout-form">
+      <input type="hidden" id="modal-catalog-id" />
+
+      <!-- Step 1: Plant Information -->
+      <div style="font-size:12px; font-weight:700; color:var(--green-light); text-transform:uppercase; letter-spacing:0.05em; margin-bottom:8px">
+        🌱 1. Your Plant Details
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label" for="plant-name">Plant Name / Nickname</label>
+          <input type="text" id="plant-name" class="form-control" placeholder="e.g. Red Rose Bush, Balcony Jasmine" required />
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="plant-type">Plant Variety / Type</label>
+          <input type="text" id="plant-type" class="form-control" placeholder="e.g. Rose, Jasmine" required />
+        </div>
+      </div>
+
+      <!-- Step 2: Delivery Address -->
+      <div style="font-size:12px; font-weight:700; color:var(--green-light); text-transform:uppercase; letter-spacing:0.05em; margin-top:12px; margin-bottom:8px">
+        📍 2. Delivery Address in India
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label" for="shipping-name">Full Name</label>
+          <input type="text" id="shipping-name" class="form-control" placeholder="Your full name" required />
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="shipping-phone">Mobile Number</label>
+          <input type="tel" id="shipping-phone" class="form-control" placeholder="+91 98765 43210" required />
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="shipping-address">Complete Shipping Address</label>
+        <textarea id="shipping-address" class="form-control" rows="2" placeholder="House No, Street, City, State, PIN Code" required></textarea>
+      </div>
+
+      <!-- Step 3: Payment Method -->
+      <div style="font-size:12px; font-weight:700; color:var(--green-light); text-transform:uppercase; letter-spacing:0.05em; margin-top:12px; margin-bottom:8px">
+        💳 3. Select Indian Payment Method
+      </div>
+      <div class="payment-methods" style="grid-template-columns: repeat(4, 1fr);">
+        <div class="payment-opt selected" data-method="UPI / GPay / PhonePe">
+          📱 UPI / GPay
+        </div>
+        <div class="payment-opt" data-method="Debit / Credit Card">
+          💳 Card
+        </div>
+        <div class="payment-opt" data-method="Net Banking">
+          🏦 NetBanking
+        </div>
+        <div class="payment-opt" data-method="Cash On Delivery">
+          💵 Cash (COD)
+        </div>
+      </div>
+
+      <!-- Dynamic Payment Fields -->
+      <div id="payment-input-fields" style="margin-top:12px">
+        <div class="form-group">
+          <input type="text" id="payment-extra-input" class="form-control" placeholder="Enter UPI ID: user@okaxis / user@ybl" value="user@gpay" />
+        </div>
+      </div>
+
+      <!-- Order Summary in INR -->
+      <div class="order-summary-box" style="margin-top:16px">
+        <div class="summary-row">
+          <span>Sensor Hardware Kit</span>
+          <span id="summary-price">₹0.00</span>
+        </div>
+        <div class="summary-row">
+          <span>Custom Admin Coding & Moisture Calibration</span>
+          <span style="color:var(--green)">FREE</span>
+        </div>
+        <div class="summary-row">
+          <span>Express Delivery Across India</span>
+          <span style="color:var(--green)">FREE</span>
+        </div>
+        <div class="summary-row total">
+          <span>Total Payable</span>
+          <span id="summary-total" style="color:var(--green)">₹0.00</span>
+        </div>
+      </div>
+
+      <div class="modal-actions">
+        <button type="button" class="btn btn-secondary" id="cancel-checkout-btn">Cancel</button>
+        <button type="submit" class="btn btn-primary" id="pay-btn" style="flex:1">
+          🔒 Pay & Place Sensor Order
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script src="js/config.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/shop.js"></script>
+
+<!-- Mobile Bottom Navigation -->
+<nav class="mobile-bottom-nav">
+  <a href="dashboard.html"><span class="nav-icon">📊</span>Dashboard</a>
+  <a href="shop.html" class="active"><span class="nav-icon">🛒</span>Shop</a>
+  <a href="add-plant.html"><span class="nav-icon">➕</span>Add Plant</a>
+  <a href="my-orders.html"><span class="nav-icon">📦</span>Orders</a>
+  <a href="simulator.html"><span class="nav-icon">⚡</span>Simulate</a>
+</nav>
+
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('./sw.js')
+        .then(reg => console.log('Service Worker registered:', reg.scope))
+        .catch(err => console.log('Service Worker registration failed:', err));
+    });
+  }
+</script>
+</body>
+</html>
+

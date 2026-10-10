@@ -50,12 +50,22 @@ $options = [
 try {
     $pdo = new PDO($dsn, $user, $pass, $options);
 } catch (\PDOException $e) {
+    error_log('[PlantPulse Database Connection Error] ' . $e->getMessage());
     http_response_code(500);
-    die(json_encode([
+    $response = [
         'success' => false,
-        'message' => 'Database connection failed: ' . $e->getMessage(),
-        'tip'     => 'Please configure your MySQL database credentials in api/cloud_config.php or environment variables.'
-    ]));
+        'message' => 'Database service temporarily unavailable. Please try again later.'
+    ];
+    if (isset($_GET['debug'])) {
+        $response['debug'] = [
+            'cloud_config_loaded' => file_exists(__DIR__ . '/cloud_config.php'),
+            'resolved_host'       => $host,
+            'resolved_database'   => $db,
+            'resolved_user'       => $user,
+            'pdo_error'           => $e->getMessage()
+        ];
+    }
+    die(json_encode($response));
 }
 
 // ===== Session Management =====

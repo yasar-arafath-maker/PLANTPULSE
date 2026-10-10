@@ -28,28 +28,18 @@ try {
 
     respond([
         'success'   => true,
-        'message'   => 'PlantPulse Cloud API is ONLINE and database is connected!',
+        'message'   => 'PlantPulse API is operational and database is connected.',
         'timestamp' => date('Y-m-d H:i:s T'),
-        'server'    => [
-            'php_version' => PHP_VERSION,
-            'client_ip'   => $_SERVER['REMOTE_ADDR'] ?? 'unknown',
-            'origin'      => $origin ?? '*'
-        ],
+        'status'    => 'healthy',
         'database'  => [
-            'status'      => 'connected',
-            'host'        => $host,
-            'database'    => $db,
-            'tables'      => $tables,
-            'stats'       => [
-                'users'  => $userCount,
-                'plants' => $plantCount
-            ]
+            'status' => 'connected'
         ]
     ]);
 } catch (Exception $e) {
+    error_log('[PlantPulse Health Check Error] ' . $e->getMessage());
     respond([
         'success' => false,
-        'message' => 'Database connection failed: ' . $e->getMessage(),
-        'tip'     => 'Make sure your MySQL database credentials in api/config.php or api/cloud_config.php are correct.'
+        'message' => 'Service temporarily unavailable.',
+        'status'  => 'unhealthy'
     ], 500);
 }

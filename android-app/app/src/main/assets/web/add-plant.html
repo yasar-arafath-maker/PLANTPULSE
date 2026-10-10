@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Add Plant — PlantPulse</title>
+  <meta name="description" content="Add a new plant to monitor its soil moisture with your sensor." />
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#0d1912" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <link rel="apple-touch-icon" href="assets/icon-192.png" />
+  <link rel="stylesheet" href="css/style.css" />
+
+</head>
+<body>
+<div class="bg-animated"></div>
+
+<div class="app-layout">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-icon">🌿</div>
+      <div>
+        <div class="logo-name">PlantPulse</div>
+        <div class="logo-tagline">Moisture Monitor</div>
+      </div>
+    </div>
+
+    <nav class="sidebar-nav">
+      <span class="nav-label">Main</span>
+      <a href="dashboard.html" class="nav-item">
+        <span class="nav-icon">📊</span> Dashboard
+      </a>
+      <a href="shop.html" class="nav-item">
+        <span class="nav-icon">🛒</span> Buy Sensor
+      </a>
+      <a href="my-orders.html" class="nav-item">
+        <span class="nav-icon">📦</span> My Sensor Orders
+      </a>
+      <a href="add-plant.html" class="nav-item active">
+        <span class="nav-icon">➕</span> Add Plant
+      </a>
+
+      <span class="nav-label">Testing & Hardware</span>
+      <a href="simulator.html" class="nav-item">
+        <span class="nav-icon">⚡</span> Hardware Simulator
+      </a>
+      <a href="admin.html" class="nav-item" id="nav-admin" style="display:none">
+        <span class="nav-icon">🛠</span> Admin Studio
+      </a>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="user-info">
+        <div class="user-avatar" id="sidebar-avatar">?</div>
+        <div class="user-details">
+          <div class="user-name"  id="sidebar-user-name">Loading…</div>
+          <div class="user-email" id="sidebar-user-email"></div>
+        </div>
+      </div>
+      <button class="nav-item btn-full" id="logout-btn" style="border:none;background:none;text-align:left;width:100%">
+        <span class="nav-icon">🚪</span> Logout
+      </button>
+    </div>
+  </aside>
+
+  <!-- Main Content -->
+  <main class="main-content">
+    <div class="topbar">
+      <div>
+        <a href="dashboard.html" class="btn btn-secondary btn-sm" style="margin-bottom:12px;display:inline-flex">
+          ← Back to Dashboard
+        </a>
+        <h1 class="page-title">Add New Plant 🌱</h1>
+        <p class="page-subtitle">Register a plant and connect your soil moisture sensor.</p>
+      </div>
+      <div class="topbar-actions">
+        <div class="alert-bell" id="alert-bell">🔔
+          <div class="bell-badge" id="alert-badge"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="add-plant-container">
+      <div class="form-card">
+
+        <!-- Error message -->
+        <div class="alert-msg" id="form-error"></div>
+
+        <form id="add-plant-form" novalidate>
+
+          <!-- Step 1: Plant Type -->
+          <div class="form-section-title">1. Choose Plant Type</div>
+          <div class="plant-type-grid" id="plant-type-grid">
+            <!-- Rendered by JS -->
+          </div>
+
+          <div class="form-row" style="margin-top:20px">
+            <div class="form-group">
+              <label class="form-label" for="plant-name-input">Plant Name *</label>
+              <input
+                type="text"
+                id="plant-name-input"
+                class="form-control"
+                placeholder="e.g. My Rose Garden"
+                required
+              />
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="plant-type-input">Plant Type *</label>
+              <input
+                type="text"
+                id="plant-type-input"
+                class="form-control"
+                placeholder="e.g. Rose"
+                required
+              />
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="location-input">Location</label>
+            <select id="location-input" class="form-control">
+              <option value="Indoor">🏠 Indoor</option>
+              <option value="Outdoor">🌳 Outdoor</option>
+              <option value="Balcony">🌿 Balcony</option>
+              <option value="Garden">🌻 Garden</option>
+              <option value="Terrace">☀️ Terrace</option>
+              <option value="Greenhouse">🏡 Greenhouse</option>
+            </select>
+          </div>
+
+          <!-- Step 2: Moisture Thresholds -->
+          <div class="form-section-title" style="margin-top:28px">2. Set Moisture Thresholds</div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Min Moisture (Water Alert)</label>
+              <div class="range-slider-row">
+                <input type="range" id="min-moisture" min="5" max="80" value="40" />
+                <div class="range-value" id="min-val">40%</div>
+              </div>
+              <small style="color:var(--text-3);font-size:12px">Alert when moisture drops below this level</small>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Max Moisture (Over-water Alert)</label>
+              <div class="range-slider-row">
+                <input type="range" id="max-moisture" min="20" max="100" value="70" />
+                <div class="range-value" id="max-val">70%</div>
+              </div>
+              <small style="color:var(--text-3);font-size:12px">Alert when moisture exceeds this level</small>
+            </div>
+          </div>
+
+          <!-- Step 3: Sensor ID -->
+          <div class="form-section-title" style="margin-top:28px">3. Connect Sensor</div>
+
+          <div class="form-group">
+            <label class="form-label" for="sensor-id-input">Sensor ID *</label>
+            <div style="display:flex;gap:10px">
+              <input
+                type="text"
+                id="sensor-id-input"
+                class="form-control"
+                placeholder="e.g. SENSOR_ABC123"
+                required
+              />
+              <button type="button" id="gen-sensor-btn" class="btn btn-secondary" style="white-space:nowrap">
+                🎲 Generate
+              </button>
+            </div>
+          </div>
+
+          <div class="sensor-info-box">
+            <h4>📡 How Sensor Connection Works</h4>
+            <p>Each plant gets a unique <strong>Sensor ID</strong> and <strong>API Key</strong>.
+            Program these into your NodeMCU/ESP8266 so it knows which plant to update.
+            After adding the plant, you'll receive the sensor code snippet automatically.</p>
+          </div>
+
+          <button type="submit" id="submit-btn" class="btn btn-primary btn-full" style="margin-top:28px">
+            🌱 Add Plant
+          </button>
+
+        </form>
+
+        <!-- API Key Result — shown after successful submission -->
+        <div class="api-key-display" id="api-key-result">
+          <div style="text-align:center;margin-bottom:20px">
+            <div style="font-size:48px" id="result-emoji">🌿</div>
+            <div style="font-family:var(--font-head);font-size:20px;font-weight:700;color:var(--text-1);margin-top:8px" id="result-name"></div>
+            <div style="font-size:14px;color:var(--green);margin-top:4px">✅ Plant added successfully!</div>
+          </div>
+
+          <div style="margin-bottom:16px">
+            <div class="form-label">📡 Sensor ID</div>
+            <div class="api-key-row">
+              <div class="api-key-value" id="result-sensor-id"></div>
+              <button class="btn btn-secondary btn-sm" onclick="copyToClipboard(document.getElementById('result-sensor-id').textContent,'Sensor ID')">📋 Copy</button>
+            </div>
+          </div>
+
+          <div style="margin-bottom:20px">
+            <div class="form-label">🔑 API Key (keep this secret!)</div>
+            <div class="api-key-row">
+              <div class="api-key-value" id="result-api-key" style="word-break:break-all"></div>
+              <button class="btn btn-secondary btn-sm" onclick="copyToClipboard(document.getElementById('result-api-key').textContent,'API Key')">📋 Copy</button>
+            </div>
+          </div>
+
+          <div>
+            <div class="form-label" style="margin-bottom:8px">💻 NodeMCU / ESP8266 Code</div>
+            <pre class="code-box" id="sensor-code"></pre>
+            <button class="btn btn-secondary btn-sm" style="margin-top:8px"
+              onclick="copyToClipboard(document.getElementById('sensor-code').textContent,'Code')">
+              📋 Copy Code
+            </button>
+          </div>
+
+          <div style="text-align:center;margin-top:24px">
+            <button id="go-dashboard-btn" class="btn btn-primary">
+              📊 Go to Dashboard
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </main>
+</div>
+
+<script src="js/config.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/add-plant.js"></script>
+
+<!-- Mobile Bottom Navigation -->
+<nav class="mobile-bottom-nav">
+  <a href="dashboard.html"><span class="nav-icon">📊</span>Dashboard</a>
+  <a href="shop.html"><span class="nav-icon">🛒</span>Shop</a>
+  <a href="add-plant.html" class="active"><span class="nav-icon">➕</span>Add Plant</a>
+  <a href="my-orders.html"><span class="nav-icon">📦</span>Orders</a>
+  <a href="simulator.html"><span class="nav-icon">⚡</span>Simulate</a>
+</nav>
+
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('./sw.js')
+        .then(reg => console.log('Service Worker registered:', reg.scope))
+        .catch(err => console.log('Service Worker registration failed:', err));
+    });
+  }
+</script>
+</body>
+</html>
+

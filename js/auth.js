@@ -32,23 +32,45 @@ function redirectTo(page) {
 }
 
 // ===== Check auth — call on protected pages =====
+let authCheckPromise = null;
+
 async function checkAuth() {
-  try {
-    const res = await fetch(`${BASE_URL}/auth/check.php`);
-    const data = await res.json();
-    if (!data.authenticated) {
+  if (authCheckPromise) return authCheckPromise;
+
+  authCheckPromise = (async () => {
+    try {
+      const res = await fetch(`${BASE_URL}/auth/check.php`);
+      const data = await res.json();
+      if (!data.authenticated) {
+        clearUser();
+        redirectTo('index.html');
+        return null;
+      }
+      saveUser(data.user);
+      populateSidebarUser(data.user);
+      checkAdminNav(data.user);
+      return data.user;
+    } catch (err) {
+      console.warn('[PlantPulse Auth] Server auth check unavailable. Checking cached offline profile:', err);
+      // Offline fallback: check if cached user profile exists
+      const cachedUser = getUser();
+      if (cachedUser && cachedUser.id) {
+        cachedUser.isOfflineSession = true;
+        populateSidebarUser(cachedUser);
+        checkAdminNav(cachedUser);
+        return cachedUser;
+      }
+
+      // No cached session: redirect to login
       clearUser();
       redirectTo('index.html');
       return null;
+    } finally {
+      authCheckPromise = null;
     }
-    saveUser(data.user);
-    populateSidebarUser(data.user);
-    checkAdminNav(data.user);
-    return data.user;
-  } catch (err) {
-    redirectTo('index.html');
-    return null;
-  }
+  })();
+
+  return authCheckPromise;
 }
 
 function checkAdminNav(user) {

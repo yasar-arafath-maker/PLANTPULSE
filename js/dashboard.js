@@ -22,7 +22,23 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 
   // Logout
-  document.getElementById('logout-btn')?.addEventListener('click', logout);
+  // Network listeners for offline sync
+  window.addEventListener('online', () => {
+    showToast('Internet connected. Refreshing live data...', 'success');
+    loadPlants();
+  });
+  window.addEventListener('offline', () => {
+    showToast('Offline Mode active. Reading from local storage.', 'info');
+    updateSyncStatusUI();
+  });
+
+  // Native sync completion callback from MainActivity
+  window.onNativeSyncCompleted = (synced, failed) => {
+    if (synced > 0) {
+      showToast(`☁️ Cloud Sync: ${synced} readings synced!`, 'success');
+    }
+    loadPlants();
+  };
 });
 
 async function loadPlants() {
@@ -32,13 +48,75 @@ async function loadPlants() {
     const data = await res.json();
     if (data.success) {
       plants = data.plants;
+      // Cache plants locally in native SQLite for offline viewing
+      if (typeof window.cacheNativePlants === 'function') {
+        window.cacheNativePlants(plants);
+      }
       renderStats(plants);
       renderPlants(plants);
+      updateSyncStatusUI();
+      return;
     }
   } catch (err) {
-    showToast('Failed to load plants', 'error');
+    console.warn('[PlantPulse] Network request failed, checking offline cache:', err);
   } finally {
     showLoading(false);
+  }
+
+  // Offline Fallback: Load from local SQLite cache!
+  if (typeof window.getCachedNativePlants === 'function') {
+    const cached = window.getCachedNativePlants();
+    if (cached && cached.length > 0) {
+      plants = cached;
+      renderStats(plants);
+      renderPlants(plants);
+      updateSyncStatusUI();
+      showToast('📡 Offline Mode: Showing cached plant records', 'info');
+      return;
+    }
+  }
+
+  showToast('Failed to load plants. Connect to internet or sync data.', 'error');
+  updateSyncStatusUI();
+}
+
+function updateSyncStatusUI() {
+  const isOnline = typeof window.isAppOnline === 'function' ? window.isAppOnline() : navigator.onLine;
+  const pendingCount = typeof window.getNativePendingCount === 'function' ? window.getNativePendingCount() : 0;
+  
+  let syncBadge = document.getElementById('sync-status-badge');
+  if (!syncBadge) {
+    const headerEl = document.querySelector('.topbar') || document.querySelector('.header') || document.querySelector('header');
+    if (headerEl) {
+      syncBadge = document.createElement('div');
+      syncBadge.id = 'sync-status-badge';
+      syncBadge.style.display = 'inline-flex';
+      syncBadge.style.alignItems = 'center';
+      syncBadge.style.marginRight = '12px';
+      headerEl.insertBefore(syncBadge, headerEl.firstChild);
+    }
+  }
+  
+  if (syncBadge) {
+    if (!isOnline) {
+      syncBadge.innerHTML = `
+        <span style="display:inline-flex;align-items:center;gap:6px;background:rgba(251,146,60,0.15);color:#fb923c;padding:5px 12px;border-radius:20px;font-size:12px;font-weight:600;border:1px solid rgba(251,146,60,0.3)">
+          <span style="width:8px;height:8px;border-radius:50%;background:#fb923c"></span>
+          Offline ${pendingCount > 0 ? `(${pendingCount} pending)` : ''}
+        </span>`;
+    } else if (pendingCount > 0) {
+      syncBadge.innerHTML = `
+        <span style="display:inline-flex;align-items:center;gap:6px;background:rgba(96,165,250,0.15);color:#60a5fa;padding:5px 12px;border-radius:20px;font-size:12px;font-weight:600;border:1px solid rgba(96,165,250,0.3);cursor:pointer" onclick="if(window.triggerNativeSync) window.triggerNativeSync();">
+          <span style="width:8px;height:8px;border-radius:50%;background:#60a5fa"></span>
+          Syncing (${pendingCount} pending)
+        </span>`;
+    } else {
+      syncBadge.innerHTML = `
+        <span style="display:inline-flex;align-items:center;gap:6px;background:rgba(61,220,106,0.15);color:#3ddc6a;padding:5px 12px;border-radius:20px;font-size:12px;font-weight:600;border:1px solid rgba(61,220,106,0.3)">
+          <span style="width:8px;height:8px;border-radius:50%;background:#3ddc6a"></span>
+          Cloud Synced
+        </span>`;
+    }
   }
 }
 

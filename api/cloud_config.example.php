@@ -8,8 +8,8 @@
 //    (from InfinityFree, Alwaysdata, Hostinger, Render, TiDB, etc.)
 // 3. That's it! api/config.php will automatically load these credentials.
 
-$host = 'sqlXXX.infinityfree.com';      // Cloud MySQL Host (e.g. sql300.infinityfree.com or localhost)
-$db   = 'if0_XXXXXXXX_plant_monitor';   // Cloud Database Name
-$user = 'if0_XXXXXXXX';                 // Cloud Database User
-$pass = 'YOUR_MYSQL_PASSWORD_HERE';     // Cloud Database Password
-$port = '3306';                         // Cloud MySQL Port (usually 3306)
+$host = 'sql212.infinityfree.com';      // Your InfinityFree MySQL Host
+$db   = 'if0_43130166_plantpulse';       // Your InfinityFree Database Name
+$user = 'if0_43130166';                 // Your InfinityFree vPanel Username
+$pass = 'YOUR_INFINITYFREE_PASSWORD';   // Enter your vPanel Account Password
+$port = '3306';
