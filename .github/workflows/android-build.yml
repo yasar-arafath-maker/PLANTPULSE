@@ -1,0 +1,52 @@
+name: Build & Package PlantPulse Android App
+
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+jobs:
+  build-android:
+    name: Build Signed Release AAB & APK
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+          cache: 'gradle'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Grant Execute Permission to Gradlew
+        run: chmod +x android-app/gradlew
+
+      - name: Build Release Bundle (AAB for Google Play)
+        run: |
+          cd android-app
+          ./gradlew bundleRelease --stacktrace
+
+      - name: Build Release APK (for Direct Phone Testing)
+        run: |
+          cd android-app
+          ./gradlew assembleRelease --stacktrace
+
+      - name: Upload Signed Google Play AAB Bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: PlantPulse-GooglePlay-AAB
+          path: android-app/app/build/outputs/bundle/release/*.aab
+          if-no-files-found: error
+
+      - name: Upload Signed Release APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: PlantPulse-Signed-APK
+          path: android-app/app/build/outputs/apk/release/*.apk
+          if-no-files-found: error
