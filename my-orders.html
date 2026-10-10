@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>My Sensor Orders — PlantPulse</title>
+  <meta name="description" content="Track your sensor order status and admin coding progress." />
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#0d1912" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <link rel="apple-touch-icon" href="assets/icon-192.png" />
+  <link rel="stylesheet" href="css/style.css" />
+
+</head>
+<body>
+<div class="bg-animated"></div>
+
+<div class="app-layout">
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-icon">🌿</div>
+      <div>
+        <div class="logo-name">PlantPulse</div>
+        <div class="logo-tagline">Moisture Monitor</div>
+      </div>
+    </div>
+
+    <nav class="sidebar-nav">
+      <span class="nav-label">Main</span>
+      <a href="dashboard.html" class="nav-item">
+        <span class="nav-icon">📊</span> Dashboard
+      </a>
+      <a href="shop.html" class="nav-item">
+        <span class="nav-icon">🛒</span> Buy Sensor
+      </a>
+      <a href="my-orders.html" class="nav-item active">
+        <span class="nav-icon">📦</span> My Sensor Orders
+      </a>
+      <a href="add-plant.html" class="nav-item">
+        <span class="nav-icon">➕</span> Add Plant
+      </a>
+
+      <span class="nav-label">Testing & Hardware</span>
+      <a href="simulator.html" class="nav-item">
+        <span class="nav-icon">⚡</span> Hardware Simulator
+      </a>
+      <a href="admin.html" class="nav-item" id="nav-admin" style="display:none">
+        <span class="nav-icon">🛠</span> Admin Studio
+      </a>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="user-info">
+        <div class="user-avatar" id="sidebar-avatar">?</div>
+        <div class="user-details">
+          <div class="user-name"  id="sidebar-user-name">Loading…</div>
+          <div class="user-email" id="sidebar-user-email"></div>
+        </div>
+      </div>
+      <button class="nav-item btn-full" id="logout-btn" style="border:none;background:none;text-align:left;width:100%">
+        <span class="nav-icon">🚪</span> Logout
+      </button>
+    </div>
+  </aside>
+
+  <!-- Main Content -->
+  <main class="main-content">
+    <div class="topbar">
+      <div>
+        <h1 class="page-title">My Sensor Orders 📦</h1>
+        <p class="page-subtitle">Track hardware sensor programming & shipping updates</p>
+      </div>
+      <div class="topbar-actions">
+        <a href="shop.html" class="btn btn-primary">
+          <span>🛒</span> Order Another Sensor
+        </a>
+      </div>
+    </div>
+
+    <div id="loading-spinner" class="spinner"></div>
+    <div id="orders-list" style="display:flex; flex-direction:column; gap:20px"></div>
+  </main>
+</div>
+
+<script src="js/config.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/my-orders.js"></script>
+
+<!-- Mobile Bottom Navigation -->
+<nav class="mobile-bottom-nav">
+  <a href="dashboard.html"><span class="nav-icon">📊</span>Dashboard</a>
+  <a href="shop.html"><span class="nav-icon">🛒</span>Shop</a>
+  <a href="add-plant.html"><span class="nav-icon">➕</span>Add Plant</a>
+  <a href="my-orders.html" class="active"><span class="nav-icon">📦</span>Orders</a>
+  <a href="simulator.html"><span class="nav-icon">⚡</span>Simulate</a>
+</nav>
+
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('./sw.js')
+        .then(reg => console.log('Service Worker registered:', reg.scope))
+        .catch(err => console.log('Service Worker registration failed:', err));
+    });
+  }
+</script>
+</body>
+</html>
+

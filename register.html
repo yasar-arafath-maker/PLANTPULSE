@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Register — PlantPulse</title>
+  <meta name="description" content="Create your PlantPulse account to start monitoring soil moisture in real-time." />
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#0d1912" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <link rel="apple-touch-icon" href="assets/icon-192.png" />
+  <link rel="stylesheet" href="css/style.css" />
+
+</head>
+<body>
+<div class="bg-animated"></div>
+
+<div class="auth-container">
+  <div class="auth-card">
+    <div class="auth-logo">
+      <div class="logo-icon">🌿</div>
+      <div>
+        <div class="logo-text">PlantPulse</div>
+        <div class="logo-sub">Smart Moisture Monitor</div>
+      </div>
+    </div>
+
+    <h1 class="auth-title">Create your account</h1>
+    <p class="auth-subtitle">Start monitoring your plants' moisture today.</p>
+
+    <div class="alert-msg" id="reg-msg"></div>
+
+    <form id="reg-form" novalidate>
+      <div class="form-group">
+        <label class="form-label" for="reg-name">Full Name</label>
+        <input
+          type="text"
+          id="reg-name"
+          class="form-control"
+          placeholder="Your name"
+          autocomplete="name"
+          required
+        />
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="reg-email">Email Address</label>
+        <input
+          type="email"
+          id="reg-email"
+          class="form-control"
+          placeholder="you@example.com"
+          autocomplete="email"
+          required
+        />
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="reg-password">Password</label>
+        <input
+          type="password"
+          id="reg-password"
+          class="form-control"
+          placeholder="Minimum 6 characters"
+          autocomplete="new-password"
+          required
+        />
+      </div>
+
+      <button type="submit" id="reg-btn" class="btn btn-primary btn-full" style="margin-top:8px">
+        🌱 Create Account
+      </button>
+    </form>
+
+    <div class="auth-link">
+      Already have an account? <a href="index.html">Login</a>
+    </div>
+  </div>
+</div>
+
+<script src="js/config.js"></script>
+<script>
+  const BASE_URL = window.BASE_URL || '/plant monitor app/api';
+
+  document.getElementById('reg-form').addEventListener('submit', async e => {
+    e.preventDefault();
+    const msgEl = document.getElementById('reg-msg');
+    const btn   = document.getElementById('reg-btn');
+
+    const name  = document.getElementById('reg-name').value.trim();
+    const email = document.getElementById('reg-email').value.trim();
+    const pass  = document.getElementById('reg-password').value;
+
+    if (!name || !email || !pass) {
+      msgEl.textContent = 'All fields are required.';
+      msgEl.className = 'alert-msg show error';
+      return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = '⏳ Creating account…';
+    msgEl.className = 'alert-msg';
+
+    try {
+      const res  = await fetch(`${BASE_URL}/auth/register.php`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, email, password: pass })
+      });
+      const data = await res.json();
+
+      if (data.success) {
+        localStorage.setItem('pm_user', JSON.stringify(data.user));
+        if (data.token) {
+          localStorage.setItem('pm_token', data.token);
+        }
+        msgEl.textContent = 'Account created! Redirecting…';
+        msgEl.className = 'alert-msg show success';
+        setTimeout(() => { window.location.href = 'dashboard.html'; }, 1000);
+      } else {
+        msgEl.textContent = data.message;
+        msgEl.className = 'alert-msg show error';
+        btn.disabled = false;
+        btn.textContent = '🌱 Create Account';
+      }
+    } catch (err) {
+      msgEl.textContent = 'Connection error. Check cloud backend or server status.';
+      msgEl.className = 'alert-msg show error';
+      btn.disabled = false;
+      btn.textContent = '🌱 Create Account';
+    }
+  });
+</script>
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('./sw.js')
+        .then(reg => console.log('Service Worker registered:', reg.scope))
+        .catch(err => console.log('Service Worker registration failed:', err));
+    });
+  }
+</script>
+</body>
+</html>
+
