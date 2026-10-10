@@ -81,5 +81,24 @@
 
 ---
 
+## 📱 Android Release Build Instructions (Android Studio)
+
+To build the signed Google Play production bundle (`.aab`) or test `.apk`:
+
+1. Open **Android Studio** and click **Open Project** -> Select the `android-app` folder.
+2. Allow Gradle sync to finish.
+3. In the top menu, go to:
+   **Build** ➔ **Generate Signed Bundle / APK...**
+4. Select **Android App Bundle** (for Google Play Store) or **APK** (for testing).
+5. App Signing details:
+   - **Key store path**: `android-app/keystore/plantpulse-release.jks`
+   - **Key alias**: `plantpulse`
+   - **Key store password**: `PlantPulse2026`
+   - **Key password**: `PlantPulse2026`
+6. Select **release** destination and click **Create**.
+7. Your signed bundle will be generated ready for Google Play Console submission!
+
+---
+
 ## 📜 License
 MIT License — Feel free to use and customize for your projects!
