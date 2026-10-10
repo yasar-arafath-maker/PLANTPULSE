@@ -16,9 +16,19 @@ android {
     }
 
 
+    signingConfigs {
+        create("release") {
+            storeFile = file("../keystore/plantpulse-release.jks")
+            storePassword = System.getenv("KEYSTORE_PASSWORD") ?: "PlantPulse2026"
+            keyAlias = System.getenv("KEY_ALIAS") ?: "plantpulse"
+            keyPassword = System.getenv("KEY_PASSWORD") ?: "PlantPulse2026"
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
+            signingConfig = signingConfigs.getByName("release")
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
     }
