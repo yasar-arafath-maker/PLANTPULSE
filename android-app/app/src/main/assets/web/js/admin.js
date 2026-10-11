@@ -178,7 +178,7 @@ window.openCodingModal = function(orderId) {
   currentCodingOrder = order;
   document.getElementById('code-order-id').value = order.id;
   document.getElementById('code-modal-plant-name').textContent = `${order.emoji || '🌱'} ${order.plant_name} (${order.plant_type})`;
-  document.getElementById('code-modal-user-info').textContent = `Buyer: ${order.user_name || order.shipping_name} (${order.user_email || 'buyer@example.com'})`;
+  document.getElementById('code-modal-user-info').textContent = `Buyer: ${order.user_name || order.shipping_name}${order.user_email ? ' (' + order.user_email + ')' : ''}`;
   
   // Default Sensor ID
   const cleanType = (order.plant_type || 'PLANT').toUpperCase().replace(/[^A-Z0-9]/g, '');

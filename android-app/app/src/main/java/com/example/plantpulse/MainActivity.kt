@@ -11,6 +11,7 @@ import android.content.Intent
 import android.net.Uri
 import android.webkit.WebViewClient
 import androidx.activity.ComponentActivity
+import androidx.activity.OnBackPressedCallback
 import com.example.plantpulse.bridge.PlantPulseNativeBridge
 import com.example.plantpulse.sync.SyncManager
 
@@ -24,9 +25,9 @@ class MainActivity : ComponentActivity() {
         // ========================================================
         // CLOUD WEB & API URL CONFIGURATION
         // ========================================================
-        // Production Cloud URLs (InfinityFree HTTPS):
-        const val PRODUCTION_APP_URL = "https://plantpulse.infinityfree.me/index.html"
-        const val PRODUCTION_API_URL = "https://plantpulse.infinityfree.me/api"
+        // Production Cloud URLs (Render / Cloud HTTPS):
+        const val PRODUCTION_APP_URL = "https://plantpulse-backend-qhlo.onrender.com/index.html"
+        const val PRODUCTION_API_URL = "https://plantpulse-backend-qhlo.onrender.com/api"
 
         // Local Development URLs (Emulator/XAMPP):
         const val LOCAL_DEV_APP_URL = "http://10.0.2.2/plant%20monitor%20app/index.html"
@@ -53,9 +54,12 @@ class MainActivity : ComponentActivity() {
             settings.useWideViewPort = true
             settings.loadWithOverviewMode = true
             settings.cacheMode = WebSettings.LOAD_DEFAULT
-            settings.mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
+            // Google Play Security Requirement: Do not allow mixed unencrypted content
+            settings.mixedContentMode = WebSettings.MIXED_CONTENT_NEVER_ALLOW
             settings.allowFileAccess = true
             settings.allowContentAccess = true
+            settings.allowFileAccessFromFileURLs = false
+            settings.allowUniversalAccessFromFileURLs = false
 
             // Enable Cookies for sessions & WebView
             val wv = this
@@ -70,6 +74,7 @@ class MainActivity : ComponentActivity() {
             webViewClient = object : WebViewClient() {
                 private fun isTrustedOrigin(urlStr: String): Boolean {
                     return urlStr.startsWith("file:///android_asset/web/") ||
+                            urlStr.contains(".onrender.com") ||
                             urlStr.startsWith("https://plantpulse.infinityfree.me") ||
                             urlStr.startsWith("http://plantpulse.infinityfree.me") ||
                             urlStr.startsWith("http://10.0.2.2") ||
@@ -127,7 +132,36 @@ class MainActivity : ComponentActivity() {
 
         setContentView(webView)
 
-        // 4. Start network monitoring to trigger cloud sync when network reconnects
+        // Modern Play Store Compliant Back Press Handler (Predictive Back Navigation)
+        onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                if (::webView.isInitialized) {
+                    // Give web UI first priority to dismiss open modals or mobile drawer
+                    webView.evaluateJavascript(
+                        "(function() { return (typeof window.handleAndroidBackPressed === 'function' ? window.handleAndroidBackPressed() : false); })()"
+                    ) { result ->
+                        val handled = result == "true" || result == "\"true\""
+                        if (!handled) {
+                            runOnUiThread {
+                                if (webView.canGoBack()) {
+                                    webView.goBack()
+                                } else {
+                                    isEnabled = false
+                                    onBackPressedDispatcher.onBackPressed()
+                                    isEnabled = true
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    isEnabled = false
+                    onBackPressedDispatcher.onBackPressed()
+                    isEnabled = true
+                }
+            }
+        })
+
+        // Start network monitoring to trigger cloud sync when network reconnects
         SyncManager.startNetworkMonitoring(this) {
             val apiUrl = nativeBridge.getCloudApiUrl()
             val token = nativeBridge.getAuthToken()
@@ -141,28 +175,6 @@ class MainActivity : ComponentActivity() {
                     )
                 }
             }
-        }
-    }
-
-    override fun onBackPressed() {
-        if (::webView.isInitialized) {
-            // Give web UI first priority to dismiss open modals or mobile drawer
-            webView.evaluateJavascript(
-                "(function() { return (typeof window.handleAndroidBackPressed === 'function' ? window.handleAndroidBackPressed() : false); })()"
-            ) { result ->
-                val handled = result == "true" || result == "\"true\""
-                if (!handled) {
-                    runOnUiThread {
-                        if (webView.canGoBack()) {
-                            webView.goBack()
-                        } else {
-                            super.onBackPressed()
-                        }
-                    }
-                }
-            }
-        } else {
-            super.onBackPressed()
         }
     }
 }

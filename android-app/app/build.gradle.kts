@@ -10,9 +10,9 @@ android {
     defaultConfig {
         applicationId = "com.plantpulse.app"
         minSdk = 24
-        targetSdk = 35
-        versionCode = 1
-        versionName = "1.0"
+        targetSdk = 36
+        versionCode = 20101
+        versionName = "2.1.1"
     }
 
 

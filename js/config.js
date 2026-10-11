@@ -14,7 +14,7 @@
   // Example: 'https://plantpulse.free.nf/api' or 'https://plantpulse.onrender.com/api'
   // Leave empty ('') to auto-detect based on current hosting domain!
   // ------------------------------------------------------------
-  const DEFAULT_CLOUD_API_URL = '';
+  const DEFAULT_CLOUD_API_URL = 'https://plantpulse-backend-qhlo.onrender.com/api';
 
   // Determine Base API URL dynamically
   function computeBaseUrl() {
@@ -82,72 +82,7 @@
   const STORE_KEY = 'pm_hybrid_store_v2';
 
   const DEFAULT_DATA = {
-    plants: [
-      {
-        id: 1,
-        user_id: 1,
-        name: 'Damask Rose',
-        type: 'Rose',
-        location: 'Balcony Garden',
-        ideal_moisture_min: 45,
-        ideal_moisture_max: 75,
-        moisture_level: 62.5,
-        status: 'good',
-        sensor_id: 'SENS-ROSE-01',
-        api_key: 'key_rose_demo',
-        emoji: '🌹',
-        last_reading: '2 mins ago',
-        created_at: new Date(Date.now() - 86400000 * 5).toISOString()
-      },
-      {
-        id: 2,
-        user_id: 1,
-        name: 'Madurai Jasmine',
-        type: 'Jasmine',
-        location: 'Living Room Window',
-        ideal_moisture_min: 40,
-        ideal_moisture_max: 70,
-        moisture_level: 34.0,
-        status: 'low',
-        sensor_id: 'SENS-JASM-02',
-        api_key: 'key_jasm_demo',
-        emoji: '🌸',
-        last_reading: '5 mins ago',
-        created_at: new Date(Date.now() - 86400000 * 4).toISOString()
-      },
-      {
-        id: 3,
-        user_id: 1,
-        name: 'Golden Barrel Cactus',
-        type: 'Succulent',
-        location: 'Office Desk',
-        ideal_moisture_min: 15,
-        ideal_moisture_max: 45,
-        moisture_level: 22.0,
-        status: 'good',
-        sensor_id: 'SENS-CACT-03',
-        api_key: 'key_cact_demo',
-        emoji: '🌵',
-        last_reading: '12 mins ago',
-        created_at: new Date(Date.now() - 86400000 * 3).toISOString()
-      },
-      {
-        id: 4,
-        user_id: 1,
-        name: 'Boston Fern',
-        type: 'Fern',
-        location: 'Bathroom Shelf',
-        ideal_moisture_min: 50,
-        ideal_moisture_max: 85,
-        moisture_level: 12.0,
-        status: 'critical',
-        sensor_id: 'SENS-FERN-04',
-        api_key: 'key_fern_demo',
-        emoji: '🌿',
-        last_reading: 'Just now',
-        created_at: new Date(Date.now() - 86400000 * 2).toISOString()
-      }
-    ],
+    plants: [],
     catalog: [
       {
         id: 1,
@@ -201,34 +136,8 @@
       }
     ],
     orders: [],
-    alerts: [
-      {
-        id: 1,
-        plant_id: 4,
-        plant_name: 'Boston Fern',
-        user_id: 1,
-        message: 'CRITICAL: Boston Fern soil moisture is 12% (Minimum required: 50%). Water immediately!',
-        alert_type: 'critical',
-        is_read: 0,
-        created_at: new Date(Date.now() - 600000).toISOString()
-      },
-      {
-        id: 2,
-        plant_id: 2,
-        plant_name: 'Madurai Jasmine',
-        user_id: 1,
-        message: 'LOW: Madurai Jasmine moisture dropped to 34% (Minimum required: 40%).',
-        alert_type: 'low',
-        is_read: 0,
-        created_at: new Date(Date.now() - 3600000).toISOString()
-      }
-    ],
-    readings: [
-      { id: 1, plant_id: 1, moisture_level: 62.5, status: 'good', timestamp: new Date(Date.now() - 120000).toISOString() },
-      { id: 2, plant_id: 2, moisture_level: 34.0, status: 'low', timestamp: new Date(Date.now() - 300000).toISOString() },
-      { id: 3, plant_id: 3, moisture_level: 22.0, status: 'good', timestamp: new Date(Date.now() - 720000).toISOString() },
-      { id: 4, plant_id: 4, moisture_level: 12.0, status: 'critical', timestamp: new Date().toISOString() }
-    ]
+    alerts: [],
+    readings: []
   };
 
   function getStore() {
@@ -236,7 +145,7 @@
       const raw = localStorage.getItem(STORE_KEY);
       if (raw) {
         const parsed = JSON.parse(raw);
-        if (parsed && Array.isArray(parsed.plants) && parsed.plants.length > 0) {
+        if (parsed && typeof parsed === 'object' && Array.isArray(parsed.plants)) {
           return parsed;
         }
       }

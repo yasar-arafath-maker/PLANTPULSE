@@ -1,17 +1,33 @@
+# ============================================================
+# PlantPulse — Render Infrastructure as Code (Blueprint)
+# Deploy directly to Render: https://render.com/
+# Connected with TiDB Cloud Serverless (AWS Singapore)
+# ============================================================
 services:
   - type: web
     name: plantpulse-backend
     runtime: docker
     plan: free
-    healthCheckPath: /api/ping.php
+    region: singapore # Matches TiDB Cloud region (ap-southeast-1) for ultra-low latency (<2ms)
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /api/health.php
     envVars:
+      - key: PORT
+        value: 10000
+      - key: AUTH_SECRET_KEY
+        generateValue: true
       - key: DB_HOST
-        sync: false
+        value: gateway01.ap-southeast-1.prod.aws.tidbcloud.com
       - key: DB_PORT
-        value: "3306"
+        value: 4000
       - key: DB_NAME
-        sync: false
+        value: plantpulse
       - key: DB_USER
-        sync: false
+        value: 3VEVapfdKd76Mj2.root
       - key: DB_PASS
-        sync: false
+        value: GGItfuRlQalZdYH6 # Default TiDB password, can be overridden in Render dashboard
+      - key: DB_SSL
+        value: "true"
+      - key: DB_SSL_CA
+        value: /var/www/html/isrgrootx1.pem

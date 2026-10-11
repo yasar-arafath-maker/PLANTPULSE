@@ -9,9 +9,9 @@ $body = getBody();
 $name  = trim($body['name']  ?? '');
 $email = trim($body['email'] ?? '');
 $pass  = trim($body['password'] ?? '');
-// Enforce role strictly to 'user' for public registration
-// Admin accounts must be created or promoted by existing administrators
-$role = 'user';
+// First registered user automatically becomes Admin on a clean database
+$userCount = (int) $pdo->query('SELECT COUNT(*) FROM users')->fetchColumn();
+$role = ($userCount === 0) ? 'admin' : 'user';
 
 // Validate
 if (empty($name) || empty($email) || empty($pass)) {

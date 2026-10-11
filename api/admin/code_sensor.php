@@ -119,50 +119,90 @@ try {
 
     $pdo->commit();
 
-    // Generate ESP8266/Arduino firmware C++ code snippet for admin
+    // Determine live Cloud URL for sensor ingestion
+    $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https') ? 'https' : 'http';
+    $hostHeader = $_SERVER['HTTP_HOST'] ?? 'plantpulse-backend-qhlo.onrender.com';
+    $serverUrl = "{$protocol}://{$hostHeader}/api/sensor/ingest.php";
+    if (strpos($serverUrl, 'localhost') !== false && !empty(getenv('RENDER_EXTERNAL_URL'))) {
+        $serverUrl = rtrim(getenv('RENDER_EXTERNAL_URL'), '/') . '/api/sensor/ingest.php';
+    }
+
+    // Generate Universal ESP8266 & ESP32 Dual-Target firmware C++ code
     $arduinoCode = <<<CPP
 /* 
- * Hardware Firmware C++ Code - Coded by Admin for Order #{$orderId}
+ * PlantPulse IoT Firmware C++ Code - Coded by Admin for Order #{$orderId}
  * Plant: {$order['plant_name']} ({$order['plant_type']})
  * Target Moisture Range: {$minLimit}% to {$maxLimit}%
  * Sensor ID: {$sensorId}
+ * Cloud Ingestion URL: {$serverUrl}
  */
 
-#include <ESP8266WiFi.h>
-#include <ESP8266HTTPClient.h>
+#if defined(ESP8266)
+  #include <ESP8266WiFi.h>
+  #include <ESP8266HTTPClient.h>
+  #include <WiFiClientSecure.h>
+  const int SENSOR_PIN = A0;
+#elif defined(ESP32)
+  #include <WiFi.h>
+  #include <HTTPClient.h>
+  #include <WiFiClientSecure.h>
+  const int SENSOR_PIN = 34; // Analog ADC1 pin
+#endif
 
-const char* ssid     = "YOUR_WIFI_SSID";
-const char* password = "YOUR_WIFI_PASSWORD";
-const char* server   = "http://localhost/plant%20monitor%20app/api/sensor/ingest.php";
+const char* ssid         = "YOUR_WIFI_SSID";
+const char* password     = "YOUR_WIFI_PASSWORD";
+const char* serverUrl    = "{$serverUrl}";
 
-const char* SENSOR_ID = "{$sensorId}";
-const char* API_KEY   = "{$apiKey}";
+const char* SENSOR_ID    = "{$sensorId}";
+const char* API_KEY      = "{$apiKey}";
 const int   MIN_MOISTURE = {$minLimit};
 const int   MAX_MOISTURE = {$maxLimit};
 
 void setup() {
   Serial.begin(115200);
+  delay(100);
+  Serial.println("\n[PlantPulse] Connecting to Wi-Fi...");
   WiFi.begin(ssid, password);
-  while (WiFi.status() != WL_CONNECTED) { delay(500); }
-  Serial.println("Sensor Connected to PlantPulse Network!");
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+  }
+  Serial.println("\n[PlantPulse] Wi-Fi Connected! IP: " + WiFi.localIP().toString());
 }
 
 void loop() {
-  int rawAnalog = analogRead(A0);
-  float moisturePercent = map(rawAnalog, 1024, 200, 0, 100);
+  int rawAnalog = analogRead(SENSOR_PIN);
+  #if defined(ESP32)
+    float moisturePercent = map(rawAnalog, 3200, 1200, 0, 100);
+  #else
+    float moisturePercent = map(rawAnalog, 1024, 250, 0, 100);
+  #endif
   moisturePercent = constrain(moisturePercent, 0, 100);
 
   if (WiFi.status() == WL_CONNECTED) {
-    WiFiClient client;
+    WiFiClientSecure client;
+    client.setInsecure(); // Required for HTTPS Cloud connectivity without CA bundles
+
     HTTPClient http;
-    http.begin(client, server);
+    http.begin(client, serverUrl);
     http.addHeader("Content-Type", "application/json");
 
-    String json = "{\"sensor_id\":\"" + String(SENSOR_ID) + "\",\"api_key\":\"" + String(API_KEY) + "\",\"moisture_level\":" + String(moisturePercent) + "}";
+    String json = "{\"sensor_id\":\"" + String(SENSOR_ID) + 
+                  "\",\"api_key\":\"" + String(API_KEY) + 
+                  "\",\"moisture_level\":" + String(moisturePercent) + "}";
+
     int httpCode = http.POST(json);
+    if (httpCode > 0) {
+      Serial.printf("[PlantPulse] Telemetry sent! HTTP %d: %s\n", httpCode, http.getString().c_str());
+    } else {
+      Serial.printf("[PlantPulse] HTTP error: %s\n", http.errorToString(httpCode).c_str());
+    }
     http.end();
+  } else {
+    Serial.println("[PlantPulse] Wi-Fi dropped. Reconnecting...");
+    WiFi.reconnect();
   }
-  delay(15000); // Send reading every 15 seconds
+  delay(15000); // 15-second telemetry sampling interval
 }
 CPP;
 

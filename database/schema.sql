@@ -108,9 +108,6 @@ CREATE INDEX idx_plant_readings ON moisture_readings(plant_id, timestamp);
 CREATE INDEX idx_user_alerts ON alerts(user_id, is_read);
 CREATE INDEX idx_user_orders ON orders(user_id);
 
--- Seed Default Admin Account (admin@plantmonitor.com / admin123)
-INSERT INTO users (name, email, password, role) VALUES
-('System Admin', 'admin@plantmonitor.com', '$2y$10$3zZ6yYq1Vq1Z.S0P4tXJ2uY5U7z3aF0B7bY2g8h.9V6e7K8L9M0N1', 'admin');
 
 -- Seed Hardware Sensor Catalog (Prices in Indian Rupees ₹)
 INSERT INTO sensor_catalog (name, plant_type, description, price, default_min_moisture, default_max_moisture, emoji) VALUES

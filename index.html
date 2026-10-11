@@ -65,62 +65,7 @@
       </button>
     </form>
 
-    <!-- Upgraded Ultra-Fast Persona Shortcuts for Tester & Demo -->
-    <div style="margin-top:20px; padding:16px; border-radius:var(--radius); background:var(--bg-2); border:1px solid var(--border)">
-      <div style="font-size:12px; color:var(--green-light); text-align:center; margin-bottom:12px; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; display:flex; align-items:center; justify-content:center; gap:6px">
-        <span>⚡ Quick Persona & Demo Shortcuts</span>
-      </div>
 
-      <!-- Persona Cards Grid -->
-      <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px">
-        <!-- Buyer Persona Card -->
-        <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:10px; padding:10px; display:flex; flex-direction:column; justify-content:space-between; gap:8px">
-          <div>
-            <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:4px">
-              <span style="font-weight:700; font-size:12px; color:var(--text-1)">🌿 Buyer</span>
-              <span style="font-size:10px; background:rgba(255,255,255,0.08); padding:2px 6px; border-radius:6px; color:var(--text-2)">User</span>
-            </div>
-            <div style="font-size:11px; color:var(--text-2); word-break:break-all">buyer@example.com</div>
-            <div style="font-size:10px; color:var(--text-3); font-family:monospace">pass: user123</div>
-          </div>
-          <div style="display:flex; flex-direction:column; gap:6px">
-            <button type="button" class="btn btn-secondary btn-sm" id="demo-user-btn" style="font-size:11px; padding:8px 6px; width:100%; font-weight:600">
-              ⚡ 1-Click Login
-            </button>
-            <button type="button" class="btn btn-sm" id="fill-user-btn" style="font-size:10px; padding:4px 6px; width:100%; background:transparent; border:1px solid var(--border); color:var(--text-3)">
-              📝 Fill Only
-            </button>
-          </div>
-        </div>
-
-        <!-- Admin Persona Card -->
-        <div style="background:rgba(61,220,106,0.05); border:1px solid var(--green-border); border-radius:10px; padding:10px; display:flex; flex-direction:column; justify-content:space-between; gap:8px">
-          <div>
-            <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:4px">
-              <span style="font-weight:700; font-size:12px; color:var(--green-light)">🛠 Admin</span>
-              <span style="font-size:10px; background:rgba(61,220,106,0.15); padding:2px 6px; border-radius:6px; color:var(--green-light)">Studio</span>
-            </div>
-            <div style="font-size:11px; color:var(--text-2); word-break:break-all">admin@plantmonitor.com</div>
-            <div style="font-size:10px; color:var(--text-3); font-family:monospace">pass: admin123</div>
-          </div>
-          <div style="display:flex; flex-direction:column; gap:6px">
-            <button type="button" class="btn btn-secondary btn-sm" id="demo-admin-btn" style="font-size:11px; padding:8px 6px; width:100%; font-weight:600; border-color:var(--green-border); background:rgba(61,220,106,0.12); color:var(--green-light)">
-              ⚡ 1-Click Login
-            </button>
-            <button type="button" class="btn btn-sm" id="fill-admin-btn" style="font-size:10px; padding:4px 6px; width:100%; background:transparent; border:1px solid var(--border); color:var(--text-3)">
-              📝 Fill Only
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <!-- Live Feedback Banner -->
-      <div id="demo-feedback-pill" style="display:none; margin-top:10px; padding:6px 10px; border-radius:8px; font-size:11px; text-align:center; background:rgba(61,220,106,0.12); color:var(--green-light); border:1px solid var(--green-border)"></div>
-
-      <div style="font-size:11px; color:var(--text-3); text-align:center; margin-top:8px">
-        Tip: <strong>1-Click Login</strong> signs you in immediately; <strong>Fill Only</strong> allows testing keyboard and inputs.
-      </div>
-    </div>
 
     <div class="auth-link" style="margin-top:16px">
       Don't have an account? <a href="register.html">Create Buyer Account</a>
@@ -201,19 +146,6 @@
     } catch (e) {}
   })();
 
-  const DEMO_ACCOUNTS = {
-    'buyer@example.com': {
-      pass: 'user123',
-      user: { id: 101, name: 'Sithi Buyer', email: 'buyer@example.com', role: 'user' },
-      target: 'dashboard.html'
-    },
-    'admin@plantmonitor.com': {
-      pass: 'admin123',
-      user: { id: 1, name: 'System Administrator', email: 'admin@plantmonitor.com', role: 'admin' },
-      target: 'admin.html'
-    }
-  };
-
   function completeLogin(userData, token, targetUrl) {
     localStorage.setItem('pm_user', JSON.stringify(userData));
     if (token) {
@@ -222,33 +154,29 @@
     window.location.href = targetUrl;
   }
 
-  // Fill Only Shortcuts
-  document.getElementById('fill-user-btn')?.addEventListener('click', () => {
-    document.getElementById('email').value = 'buyer@example.com';
-    document.getElementById('password').value = 'user123';
-    showDemoFeedback('🌿 Buyer credentials loaded! Form ready for inspection.');
-  });
+  async function performLogin(email, password) {
+    const cleanEmail = email.trim().toLowerCase();
+    const cleanPass  = password.trim();
 
-  document.getElementById('fill-admin-btn')?.addEventListener('click', () => {
-    document.getElementById('email').value = 'admin@plantmonitor.com';
-    document.getElementById('password').value = 'admin123';
-    showDemoFeedback('🛠 Admin credentials loaded! Form ready for inspection.');
-  });
-
-  // Quick 1-Click Demo Fill & Instant Login (Zero Error Guarantee)
-  document.getElementById('demo-user-btn')?.addEventListener('click', () => {
-    document.getElementById('email').value = 'buyer@example.com';
-    document.getElementById('password').value = 'user123';
-    showDemoFeedback('⚡ Signing in to Buyer Portal…');
-    completeLogin(DEMO_ACCOUNTS['buyer@example.com'].user, 'demo_token_' + Date.now(), 'dashboard.html');
-  });
-
-  document.getElementById('demo-admin-btn')?.addEventListener('click', () => {
-    document.getElementById('email').value = 'admin@plantmonitor.com';
-    document.getElementById('password').value = 'admin123';
-    showDemoFeedback('⚡ Signing in to Admin Studio…');
-    completeLogin(DEMO_ACCOUNTS['admin@plantmonitor.com'].user, 'demo_token_' + Date.now(), 'admin.html');
-  });
+    try {
+      const res = await fetch(`${BASE_URL}/auth/login.php`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: cleanEmail, password: cleanPass })
+      });
+      const data = await res.json();
+      if (data && data.success && data.user) {
+        const dest = (data.user.role === 'admin') ? 'admin.html' : 'dashboard.html';
+        completeLogin(data.user, data.token, dest);
+        return { success: true };
+      } else {
+        return { success: false, message: data?.message || 'Invalid email or password.' };
+      }
+    } catch (err) {
+      return { success: false, message: 'Connection error. Check cloud backend or server status.' };
+    }
+  }
 
   document.getElementById('login-form').addEventListener('submit', async e => {
     e.preventDefault();
@@ -272,38 +200,9 @@
     btn.textContent = '⏳ Logging in…';
     errEl.className = 'alert-msg';
 
-    // 1. INSTANT ZERO-ERROR DEMO AUTH CHECK
-    const demo = DEMO_ACCOUNTS[cleanEmail];
-    if (demo && (cleanPass.toLowerCase() === demo.pass.toLowerCase())) {
-      completeLogin(demo.user, 'demo_token_' + Date.now(), demo.target);
-      return;
-    }
-
-    // 2. BACKEND FETCH FOR CUSTOM ACCOUNTS
-    try {
-      const res  = await fetch(`${BASE_URL}/auth/login.php`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: cleanEmail, password: cleanPass })
-      });
-      const data = await res.json();
-
-      if (data && data.success) {
-        const dest = (data.user && data.user.role === 'admin') ? 'admin.html' : 'dashboard.html';
-        completeLogin(data.user, data.token, dest);
-        return;
-      } else {
-        errEl.textContent = (data && data.message) ? data.message : 'Invalid email or password.';
-        errEl.className = 'alert-msg show error';
-        btn.disabled = false;
-        btn.textContent = 'Login to Dashboard';
-      }
-    } catch (err) {
-      if (demo) {
-        errEl.textContent = 'Password incorrect. Password is: ' + demo.pass;
-      } else {
-        errEl.textContent = 'Connection error. Check cloud backend or server status.';
-      }
+    const result = await performLogin(cleanEmail, cleanPass);
+    if (!result.success) {
+      errEl.textContent = result.message;
       errEl.className = 'alert-msg show error';
       btn.disabled = false;
       btn.textContent = 'Login to Dashboard';

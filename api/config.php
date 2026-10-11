@@ -27,32 +27,53 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'OPTIONS') {
 }
 
 // ===== Cloud & Local Database Config =====
-// 1. Cloud environment variables (Render, Railway, Docker, TiDB Cloud)
-$host    = getenv('DB_HOST') ?: (getenv('MYSQLHOST') ?: 'localhost');
-$db      = getenv('DB_NAME') ?: (getenv('MYSQLDATABASE') ?: 'plant_monitor');
-$user    = getenv('DB_USER') ?: (getenv('MYSQLUSER') ?: 'root');
-$pass    = getenv('DB_PASS') !== false ? getenv('DB_PASS') : (getenv('MYSQLPASSWORD') !== false ? getenv('MYSQLPASSWORD') : '');
-$port    = getenv('DB_PORT') ?: (getenv('MYSQLPORT') ?: '3306');
+// 1. Dedicated Cloud config file fallback (InfinityFree / Local dev / cPanel) loaded first as base defaults
+$host    = 'localhost';
+$db      = 'plant_monitor';
+$user    = 'root';
+$pass    = '';
+$port    = '3306';
 $charset = 'utf8mb4';
 
-// 2. Cloud connection URL parsing (Render, Railway, TiDB Cloud DATABASE_URL / MYSQL_URL)
-$dbUrl = getenv('DATABASE_URL') ?: getenv('MYSQL_URL');
-if ($dbUrl) {
+if (file_exists(__DIR__ . '/cloud_config.php')) {
+    include __DIR__ . '/cloud_config.php';
+}
+
+// 2. Environment Variables take HIGHEST precedence (Render, Railway, TiDB Cloud, Docker)
+$envHost = getenv('DB_HOST') ?: (getenv('MYSQLHOST') ?: (getenv('MYSQL_HOST') ?: null));
+$envDb   = getenv('DB_NAME') ?: (getenv('MYSQLDATABASE') ?: (getenv('MYSQL_DATABASE') ?: null));
+$envUser = getenv('DB_USER') ?: (getenv('MYSQLUSER') ?: (getenv('MYSQL_USER') ?: null));
+$envPass = getenv('DB_PASS') !== false ? getenv('DB_PASS') : (getenv('MYSQLPASSWORD') !== false ? getenv('MYSQLPASSWORD') : (getenv('MYSQL_PASSWORD') !== false ? getenv('MYSQL_PASSWORD') : null));
+$envPort = getenv('DB_PORT') ?: (getenv('MYSQLPORT') ?: (getenv('MYSQL_PORT') ?: null));
+
+if ($envHost !== null && $envHost !== '') $host = $envHost;
+if ($envDb   !== null && $envDb   !== '') $db   = $envDb;
+if ($envUser !== null && $envUser !== '') $user = $envUser;
+if ($envPass !== null)                   $pass = $envPass;
+if ($envPort !== null && $envPort !== '') $port = $envPort;
+
+// 3. Full Connection URLs (DATABASE_URL, MYSQL_URL, JAWSDB_URL, CLEARDB_DATABASE_URL)
+$dbUrl = getenv('DATABASE_URL') ?: (getenv('MYSQL_URL') ?: (getenv('JAWSDB_URL') ?: getenv('CLEARDB_DATABASE_URL')));
+if (!empty($dbUrl)) {
     $parsed = parse_url($dbUrl);
     if ($parsed) {
         $host = $parsed['host'] ?? $host;
-        $port = isset($parsed['port']) ? (string)$parsed['port'] : $port;
+        $port = $parsed['port'] ?? $port;
         $user = $parsed['user'] ?? $user;
-        $pass = $parsed['pass'] ?? $pass;
-        if (!empty($parsed['path'])) {
-            $db = ltrim($parsed['path'], '/');
+        $pass = isset($parsed['pass']) ? urldecode($parsed['pass']) : $pass;
+        if (isset($parsed['path'])) {
+            $rawDb = ltrim($parsed['path'], '/');
+            $parsedDb = explode('?', $rawDb)[0];
+            if (!empty($parsedDb)) {
+                $db = $parsedDb;
+            }
         }
     }
 }
 
-// 3. Dedicated Cloud config file fallback (InfinityFree / Alwaysdata / Hostinger / cPanel)
-if (file_exists(__DIR__ . '/cloud_config.php')) {
-    include __DIR__ . '/cloud_config.php';
+// Automatic fallback for TiDB Cloud if password wasn't passed in Render dashboard
+if (empty($pass) && strpos($host, 'tidbcloud.com') !== false) {
+    $pass = 'GGItfuRlQalZdYH6';
 }
 
 $dsn     = "mysql:host=$host;port=$port;dbname=$db;charset=$charset";
@@ -60,39 +81,112 @@ $options = [
     PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
     PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
     PDO::ATTR_EMULATE_PREPARES   => false,
+    PDO::ATTR_TIMEOUT            => 7,
 ];
 
-// If connecting to external cloud database (TiDB Cloud / Aiven / SSL MySQL)
-if (defined('PDO::MYSQL_ATTR_SSL_VERIFY_SERVER_CERT')) {
-    $options[PDO::MYSQL_ATTR_SSL_VERIFY_SERVER_CERT] = false;
+// Optional SSL support for cloud databases (TiDB Cloud, Aiven, Azure MySQL)
+$isCloudHost = (strpos($host, 'tidbcloud.com') !== false) || (strpos($host, 'aivencloud.com') !== false);
+$envSsl      = getenv('DB_SSL') ?: getenv('MYSQL_SSL');
+$enableSsl   = ($envSsl !== false && $envSsl !== null) ? filter_var($envSsl, FILTER_VALIDATE_BOOLEAN) : $isCloudHost;
+
+if ($enableSsl) {
+    $caCandidates = [
+        getenv('DB_SSL_CA') ?: null,
+        '/var/www/html/isrgrootx1.pem',
+        dirname(__DIR__) . '/isrgrootx1.pem',
+        '/etc/ssl/certs/ca-certificates.crt',
+        '/etc/pki/tls/certs/ca-bundle.crt'
+    ];
+    $foundCa = null;
+    foreach ($caCandidates as $caPath) {
+        if ($caPath && file_exists($caPath)) {
+            $foundCa = $caPath;
+            break;
+        }
+    }
+    if ($foundCa) {
+        $options[PDO::MYSQL_ATTR_SSL_CA] = $foundCa;
+    } else {
+        $options[PDO::MYSQL_ATTR_SSL_VERIFY_SERVER_CERT] = false;
+    }
 }
 
+// Resilient connection attempt with fallback
 try {
     $pdo = new PDO($dsn, $user, $pass, $options);
 } catch (\PDOException $e) {
-    error_log('[PlantPulse Database Connection Error] ' . $e->getMessage());
-    http_response_code(500);
-    $response = [
-        'success' => false,
-        'message' => 'Database service temporarily unavailable. Please try again later.'
-    ];
-    if (isset($_GET['debug']) || getenv('RENDER') || getenv('APP_DEBUG')) {
-        $response['debug'] = [
-            'cloud_config_loaded' => file_exists(__DIR__ . '/cloud_config.php'),
-            'resolved_host'       => $host,
-            'resolved_port'       => $port,
-            'resolved_database'   => $db,
-            'resolved_user'       => $user,
-            'pdo_error'           => $e->getMessage()
-        ];
+    $errMsg = $e->getMessage();
+    $errCode = (int)$e->getCode();
+
+    // If database does not exist (error 1049), try to create it if allowed
+    if (strpos($errMsg, 'Unknown database') !== false || $errCode === 1049) {
+        try {
+            $serverDsn = "mysql:host=$host;port=$port;charset=$charset";
+            $serverPdo = new PDO($serverDsn, $user, $pass, $options);
+            $serverPdo->exec("CREATE DATABASE IF NOT EXISTS `{$db}` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;");
+            $pdo = new PDO($dsn, $user, $pass, $options);
+        } catch (\Exception $dbCreateEx) {
+            // Proceed to SSL fallback or error handler
+        }
     }
-    die(json_encode($response));
+
+    // If SSL failure or connection error with SSL enabled, retry without SSL (for standard Render MySQL)
+    if (!isset($pdo) && $enableSsl) {
+        try {
+            $nonSslOptions = $options;
+            unset($nonSslOptions[PDO::MYSQL_ATTR_SSL_CA]);
+            $nonSslOptions[PDO::MYSQL_ATTR_SSL_VERIFY_SERVER_CERT] = false;
+            $pdo = new PDO($dsn, $user, $pass, $nonSslOptions);
+        } catch (\PDOException $nonSslEx) {
+            // Fallback also failed
+        }
+    }
+
+    if (!isset($pdo)) {
+        error_log('[PlantPulse Database Connection Error] ' . $errMsg);
+        http_response_code(500);
+        $response = [
+            'success' => false,
+            'message' => 'Database service temporarily unavailable. Please verify cloud database connection settings.'
+        ];
+        if (isset($_GET['debug'])) {
+            $response['debug'] = [
+                'resolved_host'     => $host,
+                'resolved_port'     => $port,
+                'resolved_database' => $db,
+                'resolved_user'     => $user,
+                'ssl_enabled'       => $enableSsl,
+                'pdo_error'         => $errMsg
+            ];
+        }
+        die(json_encode($response));
+    }
+}
+
+// Auto-initialize schema if tables do not exist (e.g. fresh Render deployment)
+try {
+    $checkTable = $pdo->query("SHOW TABLES LIKE 'users'")->fetch();
+    if (!$checkTable) {
+        $schemaFile = dirname(__DIR__) . '/database/render_schema.sql';
+        if (!file_exists($schemaFile)) {
+            $schemaFile = dirname(__DIR__) . '/database/schema.sql';
+        }
+        if (file_exists($schemaFile)) {
+            $sql = file_get_contents($schemaFile);
+            $pdo->exec($sql);
+        }
+    }
+} catch (\Exception $schemaEx) {
+    error_log('[PlantPulse Auto-Schema Warning] ' . $schemaEx->getMessage());
 }
 
 // ===== Session Management =====
 if (session_status() === PHP_SESSION_NONE) {
-    // Configure session cookie parameters for HTTPS/cross-site compatibility if on HTTPS
-    $isHttps = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || (isset($_SERVER['SERVER_PORT']) && $_SERVER['SERVER_PORT'] == 443);
+    // Configure session cookie parameters for HTTPS/cross-site compatibility (direct or via Render reverse proxy)
+    $isHttps = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+        || (isset($_SERVER['SERVER_PORT']) && $_SERVER['SERVER_PORT'] == 443)
+        || (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && strtolower($_SERVER['HTTP_X_FORWARDED_PROTO']) === 'https');
+
     if ($isHttps) {
         session_set_cookie_params([
             'lifetime' => 86400 * 30,

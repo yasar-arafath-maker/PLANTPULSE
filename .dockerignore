@@ -1,10 +1,15 @@
+# PlantPulse — Docker Build Ignore
 .git
 .github
 android-app
-playstore_assets
+assets/playstore
 tests
-*.apk
-*.aab
+.env
+.env.*
+api/cloud_config.php
+*.md
+*.log
+Thumbs.db
+.DS_Store
 .idea
 .vscode
-*.log

@@ -193,44 +193,64 @@ function showApiKeyResult(plant) {
   document.getElementById('result-emoji').textContent     = plant.emoji;
   document.getElementById('result-name').textContent      = plant.name;
 
-  const ingestUrl = `${window.BASE_URL || window.location.origin + '/api'}/sensor/ingest.php`;
-  // Build NodeMCU code snippet
-  const code = `// NodeMCU / ESP8266 Sensor Code
-#include <ESP8266WiFi.h>
-#include <ESP8266HTTPClient.h>
+  const cleanBase = (window.BASE_URL && window.BASE_URL.startsWith('http')) 
+    ? window.BASE_URL 
+    : (window.location.origin.startsWith('http') ? window.location.origin + '/api' : 'https://plantpulse-backend-qhlo.onrender.com/api');
+  const ingestUrl = `${cleanBase}/sensor/ingest.php`;
 
-const char* ssid     = "YOUR_WIFI_SSID";
-const char* password = "YOUR_WIFI_PASSWORD";
+  // Build Universal Dual-Target ESP32 / ESP8266 C++ code snippet
+  const code = `// Universal ESP32 / ESP8266 Sensor Firmware
+#if defined(ESP8266)
+  #include <ESP8266WiFi.h>
+  #include <ESP8266HTTPClient.h>
+  #include <WiFiClientSecure.h>
+  const int SENSOR_PIN = A0;
+#elif defined(ESP32)
+  #include <WiFi.h>
+  #include <HTTPClient.h>
+  #include <WiFiClientSecure.h>
+  const int SENSOR_PIN = 34; // Analog ADC1 Pin
+#endif
+
+const char* ssid      = "YOUR_WIFI_SSID";
+const char* password  = "YOUR_WIFI_PASSWORD";
 const char* serverUrl = "${ingestUrl}";
 
 const char* SENSOR_ID = "${plant.sensor_id}";
 const char* API_KEY   = "${plant.api_key}";
 
-int sensorPin = A0;
-
 void setup() {
   Serial.begin(115200);
   WiFi.begin(ssid, password);
-  while (WiFi.status() != WL_CONNECTED) { delay(500); }
+  while (WiFi.status() != WL_CONNECTED) { delay(500); Serial.print("."); }
+  Serial.println("\\n[PlantPulse] Wi-Fi Connected!");
 }
 
 void loop() {
-  int rawValue = analogRead(sensorPin);
-  float moisture = map(rawValue, 1023, 300, 0, 100);
+  int rawValue = analogRead(SENSOR_PIN);
+  #if defined(ESP32)
+    float moisture = map(rawValue, 3200, 1200, 0, 100);
+  #else
+    float moisture = map(rawValue, 1023, 250, 0, 100);
+  #endif
   moisture = constrain(moisture, 0, 100);
 
   if (WiFi.status() == WL_CONNECTED) {
+    WiFiClientSecure client;
+    client.setInsecure(); // Required for HTTPS connection to Cloud API without CA bundles
+
     HTTPClient http;
-    http.begin(serverUrl);
+    http.begin(client, serverUrl);
     http.addHeader("Content-Type", "application/json");
+
     String payload = "{\\"sensor_id\\":\\"" + String(SENSOR_ID) +
                      "\\",\\"moisture_level\\":" + String(moisture) +
                      ",\\"api_key\\":\\"" + String(API_KEY) + "\\"}";
-    http.POST(payload);
+    int httpCode = http.POST(payload);
     http.end();
   }
 
-  delay(30000); // Send every 30 seconds
+  delay(30000); // Send reading every 30 seconds
 }`;
 
   document.getElementById('sensor-code').textContent = code;

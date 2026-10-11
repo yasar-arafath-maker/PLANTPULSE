@@ -38,22 +38,42 @@ async function checkAuth() {
   if (authCheckPromise) return authCheckPromise;
 
   authCheckPromise = (async () => {
+    const cachedUser = getUser();
+    const token = localStorage.getItem('pm_token');
+
     try {
-      const res = await fetch(`${BASE_URL}/auth/check.php`);
-      const data = await res.json();
-      if (!data.authenticated) {
-        clearUser();
-        redirectTo('index.html');
-        return null;
+      const headers = {};
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+        headers['X-Auth-Token'] = token;
       }
-      saveUser(data.user);
-      populateSidebarUser(data.user);
-      checkAdminNav(data.user);
-      return data.user;
+
+      const res = await fetch(`${BASE_URL}/auth/check.php`, {
+        credentials: 'include',
+        headers
+      });
+      const data = await res.json();
+      if (data && data.authenticated && data.user) {
+        saveUser(data.user, token);
+        populateSidebarUser(data.user);
+        checkAdminNav(data.user);
+        return data.user;
+      }
+
+      // If server returned unauthenticated, check if a valid local profile exists
+      if (cachedUser && cachedUser.id) {
+        console.warn('[PlantPulse Auth] Server check unauthenticated, continuing with active local session.');
+        populateSidebarUser(cachedUser);
+        checkAdminNav(cachedUser);
+        return cachedUser;
+      }
+
+      // No active session: redirect to login page
+      clearUser();
+      redirectTo('index.html');
+      return null;
     } catch (err) {
-      console.warn('[PlantPulse Auth] Server auth check unavailable. Checking cached offline profile:', err);
-      // Offline fallback: check if cached user profile exists
-      const cachedUser = getUser();
+      console.warn('[PlantPulse Auth] Server auth check offline/unavailable:', err);
       if (cachedUser && cachedUser.id) {
         cachedUser.isOfflineSession = true;
         populateSidebarUser(cachedUser);
@@ -61,7 +81,6 @@ async function checkAuth() {
         return cachedUser;
       }
 
-      // No cached session: redirect to login
       clearUser();
       redirectTo('index.html');
       return null;

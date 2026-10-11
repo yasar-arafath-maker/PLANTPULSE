@@ -2,6 +2,9 @@
 
 **PlantPulse** is a complete IoT-enabled Plant Soil Moisture Monitoring & Irrigation Management System featuring a modern Web Application, Android Mobile App (WebView APK), and Cloud-Ready PHP/MySQL REST API with Hardware Sensor Ingestion (ESP32 / NodeMCU).
 
+🌐 **Live Cloud Deployment**: [https://plantpulse-backend-qhlo.onrender.com/](https://plantpulse-backend-qhlo.onrender.com/)  
+🏥 **API Health Check**: [https://plantpulse-backend-qhlo.onrender.com/api/health.php](https://plantpulse-backend-qhlo.onrender.com/api/health.php)
+
 ---
 
 ## ✨ Features
@@ -23,6 +26,7 @@
 - **Database**: MySQL (`schema.sql`)
 - **Mobile**: Android Kotlin WebView (`android-app/`)
 - **IoT Hardware**: ESP8266 / ESP32 / Arduino (JSON HTTP POST to `/api/sensor/ingest.php`)
+- **Cloud Platform**: Render Web Services (Docker runtime, auto-HTTPS, dynamic `$PORT` routing)
 
 ---
 
@@ -37,15 +41,29 @@
 │   ├── plants/            # Plant management & thresholds
 │   ├── readings/          # Moisture historical data
 │   ├── sensor/            # Hardware ingest & simulation
-│   ├── config.php         # Database connection & CORS engine
+│   ├── config.php         # Database connection, CORS & Cloud SSL engine
 │   └── health.php         # Cloud API health check endpoint
+├── database/              # SQL schemas for local, Render & cloud
+│   ├── render_schema.sql  # Cloud MySQL schema (TiDB / Aiven / Render)
+│   ├── schema.sql         # Localhost MySQL schema
+│   └── infinityfree_schema.sql # Legacy InfinityFree schema
+├── scripts/               # Maintenance & deployment utilities
+│   ├── docker-entrypoint.sh # Dynamic $PORT binder for Render container
+│   ├── setup_db.php       # Database & table initialization script
+│   ├── fix_admin.php      # Admin credential reset/verify script
+│   ├── update_inr_catalog.php # Sensor catalog price updater
+│   └── README.md          # Script documentation
 ├── css/                   # Stylesheets
 ├── js/                    # Application logic & Cloud API client
 │   ├── config.js          # Dynamic Cloud API configuration
 │   ├── auth.js            # Auth utilities & route protection
 │   └── dashboard.js       # Real-time dashboard updates
-├── database/              # MySQL database schema (schema.sql)
-├── android-app/           # Android Studio project (PlantPulse APK)
+├── assets/                # Static images, icons & SVG logos
+│   └── playstore/         # Google Play Store graphic assets (512x512 icon, feature banner)
+├── android-app/           # Android Studio native companion project
+├── Dockerfile             # Production container for Render deployment
+├── .dockerignore          # Container build optimization
+├── render.yaml            # Render Blueprint for 1-click cloud deploy
 ├── index.html             # Login & Cloud API Switcher
 ├── dashboard.html         # Main Monitoring Dashboard
 ├── plant-detail.html      # Plant history & telemetry charts
@@ -53,7 +71,8 @@
 ├── shop.html              # Hardware sensor store
 ├── my-orders.html         # Buyer order status tracking
 ├── admin.html             # Admin sensor programming panel
-└── simulator.html         # Virtual sensor simulation
+├── simulator.html         # Virtual sensor simulation
+└── privacy-policy.html    # Privacy policy
 ```
 
 ---
@@ -66,18 +85,39 @@
    ```
 2. **Setup Database**:
    - Start Apache & MySQL in **XAMPP**.
-   - Open `phpMyAdmin` and import `database/schema.sql`.
+   - Open `phpMyAdmin` and import `database/schema.sql` (or run `php scripts/setup_db.php`).
 3. **Run Application**:
    - Place project inside `htdocs/`.
    - Open `http://localhost/plant monitor app/` in your browser.
 
 ---
 
-## ☁️ Cloud Deployment
+## ☁️ Deploying to Render (Cloud Backend)
 
-1. Follow the step-by-step instructions in [`cloud_deployment_guide.md`](./cloud_deployment_guide.md).
-2. Host on any free or paid PHP/MySQL host (InfinityFree, Alwaysdata, Render, Railway).
-3. Test your live cloud connection at `https://your-domain.com/api/health.php`.
+PlantPulse is optimized for zero-configuration deployment on **Render**:
+
+### Option A: Render Blueprint (Recommended)
+1. Push this repository to GitHub or GitLab.
+2. In [Render Dashboard](https://dashboard.render.com/), click **New** ➔ **Blueprint**.
+3. Connect your repository. Render will automatically detect [`render.yaml`](file:///o:/New%20folder%20%282%29/PLANTPULSE/render.yaml) and configure the web service with Docker runtime.
+4. Supply your Cloud MySQL database credentials (e.g. from TiDB Cloud Serverless or Aiven) as environment variables (`DATABASE_URL` or `DB_HOST`, `DB_NAME`, `DB_USER`, `DB_PASS`).
+5. Render will build and deploy your container!
+
+### Option B: Manual Web Service on Render
+1. In Render Dashboard, click **New** ➔ **Web Service**.
+2. Connect your repository.
+3. Select **Docker** as the environment.
+4. Set **Health Check Path** to `/api/health.php`.
+5. Under **Environment Variables**, add:
+   - `DB_HOST` (e.g. `gateway01.us-east-1.prod.aws.tidbcloud.com`)
+   - `DB_NAME` (e.g. `plantpulse`)
+   - `DB_USER` (e.g. `your_user`)
+   - `DB_PASS` (e.g. `your_password`)
+   - `DB_PORT` (`3306` or `4000`)
+   - `DB_SSL` (`true` if your cloud DB requires TLS)
+   - `AUTH_SECRET_KEY` (a random secure string)
+6. Run [`database/render_schema.sql`](file:///o:/New%20folder%20%282%29/PLANTPULSE/database/render_schema.sql) in your cloud MySQL console to initialize tables and initial admin credentials (`admin@plantmonitor.com` / `admin123`).
+7. Once deployed, verify health at: `https://plantpulse-backend-qhlo.onrender.com/api/health.php`.
 
 ---
 
