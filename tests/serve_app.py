@@ -1,5 +1,6 @@
 """
-Local Development & Testing Server for PlantPulse Web App + Mock API
+Local Development & Testing Server for PlantPulse Web App + Shared State Mock API
+Supports cross-device order creation, admin coding, status updates, and session management.
 """
 import http.server
 import socketserver
@@ -9,9 +10,43 @@ import time
 
 ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 
+# Shared in-memory data store for testing multi-client and cross-device sync
+SHARED_ORDERS = [
+    {
+        "id": 101,
+        "user_id": 1,
+        "plant_name": "Terrace Rose",
+        "plant_type": "Rose",
+        "catalog_id": 1,
+        "catalog_name": "Smart Rose Sensor Kit",
+        "emoji": "🌹",
+        "price": 549.00,
+        "order_status": "shipped",
+        "created_at": "2026-10-10 14:00:00",
+        "assigned_sensor_id": "SENS-ROSE-101",
+        "min_moisture_threshold": 40,
+        "max_moisture_threshold": 65,
+        "shipping_name": "Yasar Arafath",
+        "shipping_address": "42 Green Lane, Bangalore",
+        "shipping_phone": "+91 98765 43210",
+        "user_name": "Yasar Arafath",
+        "user_email": "yasar@plantpulse.app",
+        "admin_notes": "Calibrated for red clay mix."
+    }
+]
+
+RECENT_SUBMISSIONS = []
+
 class PlantPulseTestHandler(http.server.SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, directory=ROOT_DIR, **kwargs)
+
+    def do_OPTIONS(self):
+        self.send_response(200)
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS, PUT, DELETE")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With")
+        self.end_headers()
 
     def do_GET(self):
         if self.path.startswith("/api/"):
@@ -37,6 +72,11 @@ class PlantPulseTestHandler(http.server.SimpleHTTPRequestHandler):
                 "success": True,
                 "authenticated": True,
                 "user": {"id": 1, "name": "Yasar Arafath", "email": "yasar@plantpulse.app", "role": "admin"}
+            }).encode())
+        elif self.path.startswith("/api/auth/logout.php"):
+            self.wfile.write(json.dumps({
+                "success": True,
+                "message": "Logged out successfully"
             }).encode())
         elif self.path.startswith("/api/plants/list.php"):
             self.wfile.write(json.dumps({
@@ -134,57 +174,27 @@ class PlantPulseTestHandler(http.server.SimpleHTTPRequestHandler):
                 ]
             }).encode())
         elif self.path.startswith("/api/orders/list.php"):
+            # Return live shared orders for user
             self.wfile.write(json.dumps({
                 "success": True,
-                "orders": [
-                    {
-                        "id": 101,
-                        "plant_name": "Terrace Rose",
-                        "plant_type": "Rose",
-                        "catalog_id": 1,
-                        "catalog_name": "Smart Rose Sensor Kit",
-                        "emoji": "🌹",
-                        "price": 549.00,
-                        "order_status": "shipped",
-                        "created_at": "2026-10-10 14:00:00",
-                        "assigned_sensor_id": "SENS-ROSE-101",
-                        "min_moisture_threshold": 40,
-                        "max_moisture_threshold": 65,
-                        "shipping_name": "Yasar Arafath",
-                        "shipping_address": "42 Green Lane, Bangalore"
-                    }
-                ]
+                "orders": SHARED_ORDERS
             }).encode())
         elif self.path.startswith("/api/admin/orders.php"):
+            # Calculate stats dynamically from SHARED_ORDERS
+            total = len(SHARED_ORDERS)
+            pending = sum(1 for o in SHARED_ORDERS if o.get("order_status") == "ordered")
+            coded = sum(1 for o in SHARED_ORDERS if o.get("order_status") == "coding_sensor")
+            dispatched = sum(1 for o in SHARED_ORDERS if o.get("order_status") in ["shipped", "delivered"])
+
             self.wfile.write(json.dumps({
                 "success": True,
                 "stats": {
-                    "total_orders": 1,
-                    "pending_coding": 0,
-                    "coded_orders": 1,
-                    "dispatched_orders": 1
+                    "total_orders": total,
+                    "pending_coding": pending,
+                    "coded_orders": coded,
+                    "dispatched_orders": dispatched
                 },
-                "orders": [
-                    {
-                        "id": 101,
-                        "plant_name": "Terrace Rose",
-                        "plant_type": "Rose",
-                        "user_name": "Yasar Arafath",
-                        "user_email": "yasar@plantpulse.app",
-                        "catalog_name": "Smart Rose Sensor Kit",
-                        "emoji": "🌹",
-                        "price": 549.00,
-                        "order_status": "shipped",
-                        "created_at": "2026-10-10 14:00:00",
-                        "assigned_sensor_id": "SENS-ROSE-101",
-                        "min_moisture_threshold": 40,
-                        "max_moisture_threshold": 65,
-                        "shipping_name": "Yasar Arafath",
-                        "shipping_address": "42 Green Lane, Bangalore",
-                        "shipping_phone": "+91 98765 43210",
-                        "admin_notes": "Calibrated for red clay mix."
-                    }
-                ]
+                "orders": SHARED_ORDERS
             }).encode())
         else:
             self.wfile.write(json.dumps({"success": True}).encode())
@@ -197,22 +207,154 @@ class PlantPulseTestHandler(http.server.SimpleHTTPRequestHandler):
         except:
             data = {}
 
-        self.send_response(200)
-        self.send_header("Content-Type", "application/json")
-        self.send_header("Access-Control-Allow-Origin", "*")
-        self.end_headers()
-
         if self.path.startswith("/api/auth/login.php"):
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.end_headers()
             self.wfile.write(json.dumps({
                 "success": True,
                 "message": "Login successful",
                 "token": "test-jwt-token-2026",
                 "user": {"id": 1, "name": "Yasar Arafath", "email": "yasar@plantpulse.app", "role": "admin"}
             }).encode())
+        elif self.path.startswith("/api/auth/logout.php"):
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.end_headers()
+            self.wfile.write(json.dumps({
+                "success": True,
+                "message": "Logged out successfully"
+            }).encode())
+        elif self.path.startswith("/api/orders/create.php"):
+            # Validate required fields
+            req = ["catalog_id", "plant_name", "plant_type", "shipping_name", "shipping_phone", "shipping_address"]
+            missing = [f for f in req if not data.get(f)]
+            if missing:
+                self.send_response(400)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Access-Control-Allow-Origin", "*")
+                self.end_headers()
+                self.wfile.write(json.dumps({
+                    "success": False,
+                    "message": f"Missing required fields: {', '.join(missing)}"
+                }).encode())
+                return
+
+            # Check duplicate within 15 seconds
+            now = time.time()
+            sub_key = (data.get("plant_name"), data.get("shipping_phone"), data.get("catalog_id"))
+            global RECENT_SUBMISSIONS
+            RECENT_SUBMISSIONS = [s for s in RECENT_SUBMISSIONS if now - s["time"] < 15]
+            if any(s["key"] == sub_key for s in RECENT_SUBMISSIONS):
+                self.send_response(429)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Access-Control-Allow-Origin", "*")
+                self.end_headers()
+                self.wfile.write(json.dumps({
+                    "success": False,
+                    "message": "Duplicate order submission detected. Please wait a moment."
+                }).encode())
+                return
+
+            RECENT_SUBMISSIONS.append({"key": sub_key, "time": now})
+
+            # Create shared order
+            new_id = 100 + len(SHARED_ORDERS) + 1
+            new_order = {
+                "id": new_id,
+                "user_id": 2,
+                "plant_name": data.get("plant_name"),
+                "plant_type": data.get("plant_type"),
+                "catalog_id": int(data.get("catalog_id")),
+                "catalog_name": f"{data.get('plant_type')} Sensor Kit",
+                "emoji": "🌱",
+                "price": 499.00,
+                "shipping_name": data.get("shipping_name"),
+                "shipping_phone": data.get("shipping_phone"),
+                "shipping_address": data.get("shipping_address"),
+                "payment_method": data.get("payment_method", "UPI"),
+                "payment_status": "paid",
+                "order_status": "ordered",
+                "user_name": data.get("shipping_name"),
+                "user_email": "friend@plantpulse.app",
+                "assigned_sensor_id": None,
+                "min_moisture_threshold": 40,
+                "max_moisture_threshold": 75,
+                "admin_notes": None,
+                "created_at": time.strftime("%Y-%m-%d %H:%M:%S")
+            }
+            SHARED_ORDERS.insert(0, new_order)
+
+            self.send_response(201)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.end_headers()
+            self.wfile.write(json.dumps({
+                "success": True,
+                "message": "Order placed successfully! Admin will code and dispatch your sensor shortly.",
+                "order_id": new_id
+            }).encode())
+        elif self.path.startswith("/api/admin/code_sensor.php"):
+            order_id = int(data.get("order_id", 0))
+            order = next((o for o in SHARED_ORDERS if o["id"] == order_id), None)
+            if not order:
+                self.send_response(404)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Access-Control-Allow-Origin", "*")
+                self.end_headers()
+                self.wfile.write(json.dumps({"success": False, "message": "Order not found"}).encode())
+                return
+
+            order["assigned_sensor_id"] = data.get("sensor_id", f"SENS-TEST-{order_id}")
+            order["min_moisture_threshold"] = int(data.get("min_moisture", 40))
+            order["max_moisture_threshold"] = int(data.get("max_moisture", 75))
+            order["admin_notes"] = data.get("admin_notes", "")
+            order["order_status"] = "shipped" if data.get("dispatch") else "coding_sensor"
+
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.end_headers()
+            self.wfile.write(json.dumps({
+                "success": True,
+                "message": "Sensor coded & provisions saved!",
+                "arduino_code": f"// ESP32 Sensor Firmware for {order['assigned_sensor_id']}"
+            }).encode())
+        elif self.path.startswith("/api/admin/update_status.php"):
+            order_id = int(data.get("order_id", 0))
+            new_status = data.get("status", "")
+            order = next((o for o in SHARED_ORDERS if o["id"] == order_id), None)
+            if not order:
+                self.send_response(404)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Access-Control-Allow-Origin", "*")
+                self.end_headers()
+                self.wfile.write(json.dumps({"success": False, "message": "Order not found"}).encode())
+                return
+
+            order["order_status"] = new_status
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.end_headers()
+            self.wfile.write(json.dumps({
+                "success": True,
+                "message": f"Order status updated to '{new_status}' successfully."
+            }).encode())
         elif self.path.startswith("/api/alerts/mark_read.php"):
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.end_headers()
             self.wfile.write(json.dumps({"success": True, "message": "Alerts marked as read"}).encode())
         elif self.path.startswith("/api/sensor/simulate.php"):
             moist = float(data.get("moisture_level", 50))
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.end_headers()
             self.wfile.write(json.dumps({
                 "success": True,
                 "message": "Telemetry processed",
@@ -223,6 +365,10 @@ class PlantPulseTestHandler(http.server.SimpleHTTPRequestHandler):
                 "alert_message": f"Moisture alert at {moist}%" if moist < 40 or moist > 70 else ""
             }).encode())
         else:
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.end_headers()
             self.wfile.write(json.dumps({"success": True, "message": "Success"}).encode())
 
 if __name__ == "__main__":

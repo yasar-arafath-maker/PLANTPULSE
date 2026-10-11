@@ -1,7 +1,8 @@
-// PlantPulse — Admin Studio JavaScript
+// PlantPulse — Admin Studio JavaScript (Shared Server-Side Persistence)
 
 let adminOrders = [];
 let currentCodingOrder = null;
+let adminPollInterval = null;
 
 document.addEventListener('DOMContentLoaded', async () => {
   const user = await checkAuth();
@@ -13,19 +14,53 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
   await loadAdminOrders();
   setupAdminHandlers();
+
+  // Sensible polling: Refresh admin orders queue every 15 seconds for cross-device sync
+  if (!adminPollInterval) {
+    adminPollInterval = setInterval(() => {
+      // Avoid refreshing while coding modal is actively open
+      const codingModal = document.getElementById('coding-modal');
+      if (!codingModal || !codingModal.classList.contains('open')) {
+        loadAdminOrders(true); // silent refresh
+      }
+    }, 15000);
+  }
 });
 
-async function loadAdminOrders() {
+window.addEventListener('beforeunload', () => {
+  if (adminPollInterval) {
+    clearInterval(adminPollInterval);
+    adminPollInterval = null;
+  }
+});
+
+async function loadAdminOrders(isSilent = false) {
   const spinner   = document.getElementById('loading-spinner');
   const container = document.getElementById('admin-orders-container');
+
+  if (!isSilent && spinner) {
+    spinner.style.display = 'block';
+  }
 
   try {
     const res  = await fetch(`${BASE_URL}/admin/orders.php`);
     const data = await res.json();
-    spinner.style.display = 'none';
+    if (spinner) spinner.style.display = 'none';
+
+    if (res.status === 401) {
+      clearUser();
+      redirectTo('index.html');
+      return;
+    }
+
+    if (res.status === 403) {
+      showToast('Access denied. Administrator privileges required.', 'error');
+      setTimeout(() => { redirectTo('dashboard.html'); }, 1200);
+      return;
+    }
 
     if (data.success && data.orders) {
-      // Update Stats
+      // Update Live Stats
       const stats = data.stats || {};
       document.getElementById('admin-pending-coding').textContent    = stats.pending_coding || '0';
       document.getElementById('admin-coded-sensors').textContent     = stats.coded_orders || '0';
@@ -36,30 +71,40 @@ async function loadAdminOrders() {
 
       if (adminOrders.length > 0) {
         container.innerHTML = adminOrders.map(order => renderAdminOrderCard(order)).join('');
-        return;
+      } else {
+        container.innerHTML = `
+          <div style="background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius-xl); padding:48px 24px; text-align:center">
+            <div style="font-size:40px; margin-bottom:12px">📦</div>
+            <h3 style="font-family:var(--font-head); font-size:18px; font-weight:700; color:var(--text-1); margin-bottom:6px">No Customer Orders in Database</h3>
+            <p style="color:var(--text-3); font-size:13px; max-width:440px; margin:0 auto">When a customer places a sensor order from any device, it will automatically appear here in real-time.</p>
+          </div>`;
       }
+      return;
+    }
+
+    // Backend returned error
+    if (!isSilent) {
+      container.innerHTML = `
+        <div style="background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius-xl); padding:40px 24px; text-align:center">
+          <div style="font-size:36px; margin-bottom:8px">⚠️</div>
+          <h4 style="color:var(--text-1); margin-bottom:6px; font-family:var(--font-head)">Unable to Load Orders from Cloud Database</h4>
+          <p style="color:var(--text-3); font-size:13px; margin-bottom:16px">${data.message || 'Server returned an error'}</p>
+          <button class="btn btn-secondary btn-sm" onclick="loadAdminOrders()">🔄 Retry</button>
+        </div>`;
     }
   } catch (err) {
-    console.warn('[PlantPulse Admin] API fallback to hybrid orders queue:', err);
-  }
-
-  spinner.style.display = 'none';
-  const fallbackOrders = (window.PlantPulseHybridStore && window.PlantPulseHybridStore.getOrders()) || [];
-  const fallbackStats  = (window.PlantPulseHybridStore && window.PlantPulseHybridStore.getAdminStats()) || { pending_coding: 1, coded_orders: 1, dispatched_orders: 1, total_orders: 3 };
-
-  document.getElementById('admin-pending-coding').textContent    = fallbackStats.pending_coding || '0';
-  document.getElementById('admin-coded-sensors').textContent     = fallbackStats.coded_orders || '0';
-  document.getElementById('admin-dispatched-sensors').textContent = fallbackStats.dispatched_orders || '0';
-  document.getElementById('admin-total-orders').textContent      = fallbackStats.total_orders || '0';
-
-  adminOrders = fallbackOrders;
-  if (adminOrders.length > 0) {
-    container.innerHTML = adminOrders.map(order => renderAdminOrderCard(order)).join('');
-  } else {
-    container.innerHTML = `
-      <div style="background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius-xl); padding:40px; text-align:center">
-        <p style="color:var(--text-3)">No customer orders yet.</p>
-      </div>`;
+    console.error('[PlantPulse Admin] Error loading live orders:', err);
+    if (spinner) spinner.style.display = 'none';
+    if (!isSilent) {
+      container.innerHTML = `
+        <div style="background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius-xl); padding:40px 24px; text-align:center">
+          <div style="font-size:36px; margin-bottom:8px">🔌</div>
+          <h4 style="color:var(--text-1); margin-bottom:6px; font-family:var(--font-head)">Cannot Connect to Shared Backend</h4>
+          <p style="color:var(--text-3); font-size:13px; margin-bottom:8px">${err.message || 'Network connection failed'}</p>
+          <p style="color:var(--text-3); font-size:12px; margin-bottom:16px">When running on GitHub Pages, configure your Cloud Backend API URL (e.g., InfinityFree or Render) to synchronize data across devices.</p>
+          <button class="btn btn-secondary btn-sm" onclick="loadAdminOrders()">🔄 Retry Connection</button>
+        </div>`;
+    }
   }
 }
 
@@ -82,7 +127,7 @@ function renderAdminOrderCard(order) {
             ${order.emoji || '🌱'} ${order.plant_name} <span style="font-size:14px; color:var(--text-2)">(${order.plant_type})</span>
           </h3>
           <div style="font-size:13px; color:var(--text-2); margin-top:2px">
-            Buyer: <strong>${order.user_name || order.shipping_name || 'Arun Kumar'}</strong> (${order.user_email || 'buyer@example.com'})
+            Buyer: <strong>${order.user_name || order.shipping_name || 'Customer'}</strong> (${order.user_email || 'customer@plantpulse.app'})
           </div>
         </div>
         <div style="text-align:right">
@@ -133,7 +178,7 @@ window.openCodingModal = function(orderId) {
   currentCodingOrder = order;
   document.getElementById('code-order-id').value = order.id;
   document.getElementById('code-modal-plant-name').textContent = `${order.emoji || '🌱'} ${order.plant_name} (${order.plant_type})`;
-  document.getElementById('code-modal-user-info').textContent = `Buyer: ${order.user_name} (${order.user_email})`;
+  document.getElementById('code-modal-user-info').textContent = `Buyer: ${order.user_name || order.shipping_name} (${order.user_email || 'buyer@example.com'})`;
   
   // Default Sensor ID
   const cleanType = (order.plant_type || 'PLANT').toUpperCase().replace(/[^A-Z0-9]/g, '');
@@ -192,7 +237,7 @@ function setupAdminHandlers() {
       const data = await res.json();
 
       if (data.success) {
-        showToast('🎉 Sensor coded & provisions saved!', 'success');
+        showToast('🎉 Sensor coded & provisions saved to database!', 'success');
         
         // Show Arduino code
         if (data.arduino_code) {
@@ -204,62 +249,14 @@ function setupAdminHandlers() {
         saveBtn.textContent = '✅ Save Complete Code';
         await loadAdminOrders();
       } else {
-        errEl.textContent = data.message;
+        errEl.textContent = data.message || 'Sensor coding failed on server.';
         errEl.className = 'alert-msg show error';
         saveBtn.disabled = false;
         saveBtn.textContent = '⚡ Program & Code Sensor';
       }
     } catch (err) {
-      console.warn('[PlantPulse Admin] Provisioning sensor via hybrid store fallback:', err);
-      if (window.PlantPulseHybridStore) {
-        const apiKey = 'key_' + Math.random().toString(36).substring(2, 10);
-        window.PlantPulseHybridStore.codeSensor(orderId, sensorId, apiKey, minMoist, maxMoist, notes);
-        if (dispatch) {
-          window.PlantPulseHybridStore.updateOrderStatus(orderId, 'shipped');
-        }
-        showToast('🎉 Sensor coded & provisions saved!', 'success');
-        document.getElementById('code-block').textContent = `// ==========================================
-// PlantPulse ESP32 Firmware — Generated
-// Target Sensor ID: ${sensorId}
-// Calibration: Min ${minMoist}% | Max ${maxMoist}%
-// ==========================================
-#include <WiFi.h>
-#include <HTTPClient.h>
-
-const char* ssid     = "YOUR_WIFI_SSID";
-const char* password = "YOUR_WIFI_PASSWORD";
-const char* serverUrl= "http://192.168.1.100/api/sensor/ingest.php";
-const char* sensorId = "${sensorId}";
-const char* apiKey   = "${apiKey}";
-
-void setup() {
-  Serial.begin(115200);
-  WiFi.begin(ssid, password);
-  while (WiFi.status() != WL_CONNECTED) { delay(500); Serial.print("."); }
-  Serial.println("\\nWiFi Connected! Sensor Active.");
-}
-
-void loop() {
-  int rawValue = analogRead(34);
-  float moisture = map(rawValue, 4095, 1500, 0, 100);
-  moisture = constrain(moisture, 0, 100);
-  if (WiFi.status() == WL_CONNECTED) {
-    HTTPClient http;
-    http.begin(serverUrl);
-    http.addHeader("Content-Type", "application/json");
-    String payload = "{\\"sensor_id\\":\\"" + String(sensorId) + "\\",\\"api_key\\":\\"" + String(apiKey) + "\\",\\"moisture_level\\":" + String(moisture) + "}";
-    int httpResponseCode = http.POST(payload);
-    http.end();
-  }
-  delay(10000);
-}`;
-        document.getElementById('arduino-code-output').style.display = 'block';
-        saveBtn.disabled = false;
-        saveBtn.textContent = '✅ Save Complete Code';
-        await loadAdminOrders();
-        return;
-      }
-      errEl.textContent = 'Error connecting to admin API.';
+      console.error('[PlantPulse Admin] Error submitting sensor code:', err);
+      errEl.textContent = 'Failed to connect to shared backend: ' + (err.message || 'Network error');
       errEl.className = 'alert-msg show error';
       saveBtn.disabled = false;
       saveBtn.textContent = '⚡ Program & Code Sensor';
@@ -271,6 +268,28 @@ void loop() {
     const code = document.getElementById('code-block').textContent;
     navigator.clipboard.writeText(code);
     showToast('C++ Code copied to clipboard!', 'info');
+  });
+
+  // Cloud API Configuration Handler
+  const cloudBtn = document.getElementById('admin-cloud-config-btn');
+  const cloudLabel = document.getElementById('admin-api-status-label');
+  if (cloudLabel) {
+    try {
+      const urlObj = new URL(BASE_URL, window.location.origin);
+      cloudLabel.textContent = urlObj.host || 'Cloud API';
+    } catch (e) {
+      cloudLabel.textContent = 'Cloud API';
+    }
+  }
+  cloudBtn?.addEventListener('click', () => {
+    const current = localStorage.getItem('pm_cloud_api_url') || BASE_URL;
+    const input = prompt(
+      "Enter your shared Cloud Backend API URL:\n(e.g. https://plantpulse.free.nf/api or https://plantpulse.onrender.com/api)\nLeave empty to reset to auto-detect:",
+      current
+    );
+    if (input !== null) {
+      window.setCloudApiUrl(input.trim());
+    }
   });
 }
 
@@ -290,17 +309,11 @@ window.updateOrderStatus = async function(orderId, status) {
       showToast(data.message, 'success');
       await loadAdminOrders();
     } else {
-      showToast(data.message || 'Status update failed', 'error');
+      showToast(data.message || 'Status update failed on server', 'error');
     }
   } catch (err) {
-    console.warn('[PlantPulse Admin] Update status fallback:', err);
-    if (window.PlantPulseHybridStore) {
-      window.PlantPulseHybridStore.updateOrderStatus(orderId, status);
-      showToast('Order status updated successfully', 'success');
-      await loadAdminOrders();
-      return;
-    }
-    showToast('Network error while updating status', 'error');
+    console.error('[PlantPulse Admin] Update status error:', err);
+    showToast('Network error while updating order status on shared database', 'error');
   } finally {
     updatingStatusOrderId = null;
   }

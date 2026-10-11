@@ -1,38 +1,80 @@
-// PlantPulse — My Orders JavaScript
+// PlantPulse — My Orders JavaScript (Shared Server-Side Persistence)
+
+let userOrdersPollInterval = null;
 
 document.addEventListener('DOMContentLoaded', async () => {
   await loadUserOrders();
+
+  // Sensible polling: check order status updates from Admin every 20 seconds
+  if (!userOrdersPollInterval) {
+    userOrdersPollInterval = setInterval(() => {
+      loadUserOrders(true); // silent background refresh
+    }, 20000);
+  }
 });
 
-async function loadUserOrders() {
+window.addEventListener('beforeunload', () => {
+  if (userOrdersPollInterval) {
+    clearInterval(userOrdersPollInterval);
+    userOrdersPollInterval = null;
+  }
+});
+
+async function loadUserOrders(isSilent = false) {
   const spinner = document.getElementById('loading-spinner');
   const container = document.getElementById('orders-list');
+
+  if (!isSilent && spinner) {
+    spinner.style.display = 'block';
+  }
 
   try {
     const res  = await fetch(`${BASE_URL}/orders/list.php`);
     const data = await res.json();
-    spinner.style.display = 'none';
+    if (spinner) spinner.style.display = 'none';
 
-    if (data.success && data.orders && data.orders.length > 0) {
-      container.innerHTML = data.orders.map(order => renderOrderCard(order)).join('');
+    if (res.status === 401) {
+      clearUser();
+      redirectTo('index.html');
       return;
     }
-  } catch (err) {
-    console.warn('[PlantPulse Orders] API fallback to hybrid orders:', err);
-  }
 
-  spinner.style.display = 'none';
-  const fallbackOrders = (window.PlantPulseHybridStore && window.PlantPulseHybridStore.getOrders()) || [];
-  if (fallbackOrders.length > 0) {
-    container.innerHTML = fallbackOrders.map(order => renderOrderCard(order)).join('');
-  } else {
-    container.innerHTML = `
-      <div style="background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius-xl); padding:48px 24px; text-align:center">
-        <div style="font-size:48px; margin-bottom:12px">📦</div>
-        <h3 style="font-family:var(--font-head); font-size:20px; font-weight:700; margin-bottom:8px">No Sensor Orders Yet</h3>
-        <p style="color:var(--text-2); font-size:14px; margin-bottom:20px">Purchase a custom-coded sensor kit for your Rose, Jasmine, or other plants.</p>
-        <a href="shop.html" class="btn btn-primary">🛒 Visit Sensor Store</a>
-      </div>`;
+    if (data.success && data.orders) {
+      if (data.orders.length > 0) {
+        container.innerHTML = data.orders.map(order => renderOrderCard(order)).join('');
+      } else {
+        container.innerHTML = `
+          <div style="background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius-xl); padding:48px 24px; text-align:center">
+            <div style="font-size:48px; margin-bottom:12px">📦</div>
+            <h3 style="font-family:var(--font-head); font-size:20px; font-weight:700; margin-bottom:8px">No Sensor Orders Yet</h3>
+            <p style="color:var(--text-2); font-size:14px; margin-bottom:20px">Purchase a custom-coded sensor kit for your Rose, Jasmine, or other plants.</p>
+            <a href="shop.html" class="btn btn-primary">🛒 Visit Sensor Store</a>
+          </div>`;
+      }
+      return;
+    }
+
+    if (!isSilent) {
+      container.innerHTML = `
+        <div style="background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius-xl); padding:40px 24px; text-align:center">
+          <div style="font-size:36px; margin-bottom:8px">⚠️</div>
+          <h4 style="color:var(--text-1); margin-bottom:6px">Failed to Load Orders from Server</h4>
+          <p style="color:var(--text-3); font-size:13px; margin-bottom:16px">${data.message || 'Unable to retrieve orders from cloud database'}</p>
+          <button class="btn btn-secondary btn-sm" onclick="loadUserOrders()">🔄 Retry</button>
+        </div>`;
+    }
+  } catch (err) {
+    console.error('[PlantPulse Orders] Error fetching user orders:', err);
+    if (spinner) spinner.style.display = 'none';
+    if (!isSilent) {
+      container.innerHTML = `
+        <div style="background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius-xl); padding:40px 24px; text-align:center">
+          <div style="font-size:36px; margin-bottom:8px">🔌</div>
+          <h4 style="color:var(--text-1); margin-bottom:6px">Cannot Connect to Shared Server</h4>
+          <p style="color:var(--text-3); font-size:13px; margin-bottom:16px">${err.message || 'Connection failed'}</p>
+          <button class="btn btn-secondary btn-sm" onclick="loadUserOrders()">🔄 Retry</button>
+        </div>`;
+    }
   }
 }
 
@@ -48,7 +90,7 @@ function renderOrderCard(order) {
   const createdDate   = new Date(order.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
 
   return `
-    <div style="background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius-xl); padding:28px">
+    <div style="background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius-xl); padding:28px; animation:fadeInCard 0.3s ease both">
       <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:16px; flex-wrap:wrap; gap:12px">
         <div>
           <div style="font-size:12px; color:var(--text-3); font-weight:600; text-transform:uppercase">Order #${order.id} • ${createdDate}</div>

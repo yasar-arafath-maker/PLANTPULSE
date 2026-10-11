@@ -373,6 +373,155 @@ def run_mock_api_tests():
     server.shutdown()
     server.server_close()
 
+def test_cross_device_order_sync_and_persistence():
+    """
+    Comprehensive multi-client verification:
+    1. Admin logs in on Device A.
+    2. User logs in on Device B.
+    3. User places order on Device B (with validation and duplicate check).
+    4. Confirm order persisted in shared backend.
+    5. Confirm admin on Device A sees the new order.
+    6. Admin on Device A codes sensor and updates status to shipped.
+    7. User on Device B verifies updated status and sensor ID in real-time.
+    8. Refresh both devices and verify consistent state.
+    9. Log out from both portals.
+    """
+    from serve_app import PlantPulseTestHandler, SHARED_ORDERS
+
+    server = socketserver.TCPServer(("127.0.0.1", 8769), PlantPulseTestHandler)
+    server_thread = threading.Thread(target=server.serve_forever)
+    server_thread.daemon = True
+    server_thread.start()
+
+    base_url = "http://127.0.0.1:8769/api"
+
+    try:
+        # Step 1: Admin logs in on Device A
+        admin_login = json.dumps({"email": "admin@plantmonitor.com", "password": "admin123"}).encode()
+        req = urllib.request.Request(f"{base_url}/auth/login.php", data=admin_login, headers={"Content-Type": "application/json"})
+        res = json.loads(urllib.request.urlopen(req).read().decode())
+        assert res["success"] is True, "Admin login failed"
+        admin_token = res["token"]
+
+        # Step 2: User logs in on Device B
+        user_login = json.dumps({"email": "buyer@example.com", "password": "user123"}).encode()
+        req = urllib.request.Request(f"{base_url}/auth/login.php", data=user_login, headers={"Content-Type": "application/json"})
+        res = json.loads(urllib.request.urlopen(req).read().decode())
+        assert res["success"] is True, "User login failed"
+        user_token = res["token"]
+
+        # Step 3: User places an order on Device B
+        # 3a. Validation check: empty fields return 400
+        invalid_order = json.dumps({"plant_name": ""}).encode()
+        req = urllib.request.Request(f"{base_url}/orders/create.php", data=invalid_order, headers={"Content-Type": "application/json", "Authorization": f"Bearer {user_token}"})
+        try:
+            urllib.request.urlopen(req)
+            assert False, "Expected 400 for empty required fields"
+        except urllib.error.HTTPError as err:
+            assert err.code == 400, f"Expected 400, got {err.code}"
+
+        # 3b. Valid order placement
+        order_payload = {
+            "catalog_id": 2,
+            "plant_name": "Madurai Jasmine Special",
+            "plant_type": "Jasmine",
+            "shipping_name": "Friend Sithi",
+            "shipping_phone": "9876543210",
+            "shipping_address": "Flat 4B, Green Gardens, Coimbatore",
+            "payment_method": "UPI / GPay"
+        }
+        req = urllib.request.Request(
+            f"{base_url}/orders/create.php",
+            data=json.dumps(order_payload).encode(),
+            headers={"Content-Type": "application/json", "Authorization": f"Bearer {user_token}"}
+        )
+        resp = urllib.request.urlopen(req)
+        assert resp.status in [200, 201], f"Unexpected status: {resp.status}"
+        order_res = json.loads(resp.read().decode())
+        assert order_res["success"] is True, "Order placement failed"
+        new_order_id = order_res["order_id"]
+        assert new_order_id > 0, "Invalid order_id returned"
+
+        # 3c. Duplicate submission check (within 15 seconds)
+        req_dup = urllib.request.Request(
+            f"{base_url}/orders/create.php",
+            data=json.dumps(order_payload).encode(),
+            headers={"Content-Type": "application/json", "Authorization": f"Bearer {user_token}"}
+        )
+        try:
+            urllib.request.urlopen(req_dup)
+            assert False, "Expected 429 for rapid duplicate submission"
+        except urllib.error.HTTPError as err:
+            assert err.code == 429, f"Expected 429 duplicate warning, got {err.code}"
+
+        # Step 4: Confirm order is in shared backend
+        backend_order = next((o for o in SHARED_ORDERS if o["id"] == new_order_id), None)
+        assert backend_order is not None, "Order was not persisted in shared backend"
+        assert backend_order["plant_name"] == "Madurai Jasmine Special"
+        assert backend_order["order_status"] == "ordered"
+
+        # Step 5: Admin retrieves orders on Device A without manual file edits
+        req_admin = urllib.request.Request(
+            f"{base_url}/admin/orders.php",
+            headers={"Authorization": f"Bearer {admin_token}"}
+        )
+        admin_data = json.loads(urllib.request.urlopen(req_admin).read().decode())
+        assert admin_data["success"] is True, "Admin failed to fetch orders"
+        orders_list = admin_data["orders"]
+        assert any(o["id"] == new_order_id for o in orders_list), "Admin cannot see the order placed by user on Device B"
+        admin_new_order = next(o for o in orders_list if o["id"] == new_order_id)
+        assert admin_new_order["shipping_name"] == "Friend Sithi"
+        assert admin_data["stats"]["pending_coding"] >= 1, "Pending coding stats not updated"
+
+        # Step 6: Admin codes the sensor on Device A
+        code_payload = {
+            "order_id": new_order_id,
+            "sensor_id": "SENS-JASM-7788",
+            "min_moisture": 42,
+            "max_moisture": 72,
+            "admin_notes": "Calibrated for sandy loam mix.",
+            "dispatch": True
+        }
+        req_code = urllib.request.Request(
+            f"{base_url}/admin/code_sensor.php",
+            data=json.dumps(code_payload).encode(),
+            headers={"Content-Type": "application/json", "Authorization": f"Bearer {admin_token}"}
+        )
+        code_res = json.loads(urllib.request.urlopen(req_code).read().decode())
+        assert code_res["success"] is True, "Sensor coding failed"
+
+        # Step 7: Confirm updated status persists and is reflected on User Device B
+        req_user_orders = urllib.request.Request(
+            f"{base_url}/orders/list.php",
+            headers={"Authorization": f"Bearer {user_token}"}
+        )
+        user_orders_data = json.loads(urllib.request.urlopen(req_user_orders).read().decode())
+        assert user_orders_data["success"] is True
+        user_order = next((o for o in user_orders_data["orders"] if o["id"] == new_order_id), None)
+        assert user_order is not None, "User cannot find order in my-orders"
+        assert user_order["order_status"] == "shipped", f"Expected shipped status, got {user_order['order_status']}"
+        assert user_order["assigned_sensor_id"] == "SENS-JASM-7788", "Assigned sensor ID not reflected on Device B"
+
+        # Step 8: Refresh both devices and verify data remains consistent
+        admin_refresh = json.loads(urllib.request.urlopen(req_admin).read().decode())
+        user_refresh = json.loads(urllib.request.urlopen(req_user_orders).read().decode())
+        refreshed_admin_order = next(o for o in admin_refresh["orders"] if o["id"] == new_order_id)
+        refreshed_user_order = next(o for o in user_refresh["orders"] if o["id"] == new_order_id)
+        assert refreshed_admin_order["order_status"] == refreshed_user_order["order_status"] == "shipped"
+
+        # Step 9: Log out from both portals
+        req_logout = urllib.request.Request(
+            f"{base_url}/auth/logout.php",
+            data=json.dumps({}).encode(),
+            headers={"Content-Type": "application/json"}
+        )
+        logout_res = json.loads(urllib.request.urlopen(req_logout).read().decode())
+        assert logout_res["success"] is True, "Logout failed"
+
+    finally:
+        server.shutdown()
+        server.server_close()
+
 def main():
     print("=" * 60)
     print("PlantPulse Comprehensive Senior UI/UX & Backend Audit Suite")
@@ -384,6 +533,7 @@ def main():
     run_test("JavaScript Duplicate Listeners & Debounce Guards", test_javascript_event_listeners)
     run_test("PHP Backend Security & Safe LIMIT Binding Contracts", test_php_backend_contracts)
     run_test("Mock API Scenarios (Success, 401, 500, Empty, Latency)", run_mock_api_tests)
+    run_test("Cross-Device Order Sync & Shared Data Persistence Scenario", test_cross_device_order_sync_and_persistence)
 
     print("-" * 60)
     print(f"Audit Summary: {len(passed_tests)} Passed, {len(failed_tests)} Failed")

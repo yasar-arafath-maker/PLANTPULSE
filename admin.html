@@ -68,6 +68,9 @@
         </div>
       </div>
       <div class="topbar-actions">
+        <button class="btn btn-secondary" id="admin-cloud-config-btn" title="Configure Cloud Backend API URL" style="padding:8px 12px;font-size:13px;display:inline-flex;align-items:center;gap:4px">
+          <span>☁️</span> <span id="admin-api-status-label">Cloud API</span>
+        </button>
         <button class="btn btn-secondary" onclick="loadAdminOrders()">
           <span>🔄</span> Refresh Queue
         </button>
@@ -203,7 +206,7 @@
   <a href="dashboard.html"><span class="nav-icon">📊</span>Dashboard</a>
   <a href="shop.html"><span class="nav-icon">🛒</span>Shop</a>
   <a href="my-orders.html"><span class="nav-icon">📦</span>Orders</a>
-  <a href="simulator.html"><span class="nav-icon">⚡</span>Simulate</a>
+  <a href="javascript:void(0)" class="logout-btn-trigger" style="color:var(--text-2)"><span class="nav-icon">🚪</span>Logout</a>
 </nav>
 
 <script>

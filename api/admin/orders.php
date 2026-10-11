@@ -8,10 +8,14 @@ if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
 
 try {
     $stmt = $pdo->query('
-        SELECT o.*, u.name AS user_name, u.email AS user_email, c.name AS catalog_name, c.emoji
+        SELECT o.*, 
+               COALESCE(u.name, o.shipping_name, "Customer") AS user_name, 
+               COALESCE(u.email, "customer@plantpulse.app") AS user_email, 
+               COALESCE(c.name, "Custom Sensor Kit") AS catalog_name, 
+               COALESCE(c.emoji, "🌱") AS emoji
         FROM orders o
-        JOIN users u ON o.user_id = u.id
-        JOIN sensor_catalog c ON o.catalog_id = c.id
+        LEFT JOIN users u ON o.user_id = u.id
+        LEFT JOIN sensor_catalog c ON o.catalog_id = c.id
         ORDER BY o.created_at DESC
     ');
     $orders = $stmt->fetchAll();
@@ -20,12 +24,17 @@ try {
     $stmtStats = $pdo->query('
         SELECT 
             COUNT(*) AS total_orders,
-            SUM(CASE WHEN order_status = "ordered" THEN 1 ELSE 0 END) AS pending_coding,
-            SUM(CASE WHEN order_status = "coding_sensor" THEN 1 ELSE 0 END) AS coded_orders,
-            SUM(CASE WHEN order_status = "shipped" OR order_status = "delivered" THEN 1 ELSE 0 END) AS dispatched_orders
+            COALESCE(SUM(CASE WHEN order_status = "ordered" THEN 1 ELSE 0 END), 0) AS pending_coding,
+            COALESCE(SUM(CASE WHEN order_status = "coding_sensor" THEN 1 ELSE 0 END), 0) AS coded_orders,
+            COALESCE(SUM(CASE WHEN order_status = "shipped" OR order_status = "delivered" THEN 1 ELSE 0 END), 0) AS dispatched_orders
         FROM orders
     ');
-    $stats = $stmtStats->fetch();
+    $stats = $stmtStats->fetch() ?: [
+        'total_orders' => 0,
+        'pending_coding' => 0,
+        'coded_orders' => 0,
+        'dispatched_orders' => 0
+    ];
 
     respond([
         'success' => true,

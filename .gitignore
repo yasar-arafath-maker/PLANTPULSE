@@ -17,6 +17,8 @@ android-app/**/*.apk
 android-app/**/*.aab
 
 # 3. Temporary & Scratch Test Files
+__pycache__/
+*.pyc
 scratch_test_e2e.php
 test_*.php
 scratch/

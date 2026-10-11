@@ -117,10 +117,18 @@ async function logout() {
     b.style.opacity = '0.5';
   });
   clearUser();
-  try {
-    await fetch(`${BASE_URL}/auth/logout.php`);
-  } catch (err) {}
   sessionStorage.clear();
+  if (window.PlantPulseNative && typeof window.PlantPulseNative.setAuthToken === 'function') {
+    try { window.PlantPulseNative.setAuthToken(''); } catch (e) {}
+  }
+  try {
+    await fetch(`${BASE_URL}/auth/logout.php`, {
+      method: 'POST',
+      credentials: 'include'
+    });
+  } catch (err) {
+    try { await fetch(`${BASE_URL}/auth/logout.php`, { credentials: 'include' }); } catch (e) {}
+  }
   window.location.replace('index.html');
 }
 window.logout = logout;
@@ -285,6 +293,30 @@ document.addEventListener('DOMContentLoaded', () => {
   checkAuth();
   setupMobileMenu();
   document.querySelectorAll('#logout-btn, .logout-btn-trigger').forEach(btn => {
-    btn.addEventListener('click', logout);
+    btn.addEventListener('click', (e) => {
+      if (e) e.preventDefault();
+      logout();
+    });
   });
 });
+
+window.addEventListener('pageshow', (event) => {
+  // Re-verify authentication on browser back/forward cache navigation
+  const isProtectedPage = !window.location.pathname.endsWith('index.html') && 
+                          !window.location.pathname.endsWith('register.html') &&
+                          !window.location.pathname.endsWith('privacy-policy.html') &&
+                          window.location.pathname !== '/' &&
+                          !window.location.pathname.endsWith('/');
+  if (isProtectedPage) {
+    const user = getUser();
+    if (!user || !user.id) {
+      clearUser();
+      redirectTo('index.html');
+      return;
+    }
+    if (event.persisted) {
+      checkAuth();
+    }
+  }
+});
+

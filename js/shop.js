@@ -217,35 +217,14 @@ function setupFormHandlers() {
           window.location.href = 'my-orders.html';
         }, 1200);
       } else {
-        errEl.textContent = data.message;
+        errEl.textContent = data.message || 'Failed to persist order to shared database.';
         errEl.className = 'alert-msg show error';
         payBtn.disabled = false;
         payBtn.textContent = '🔒 Pay & Place Sensor Order';
       }
     } catch (err) {
-      console.warn('[PlantPulse Shop] Placing order via hybrid store fallback:', err);
-      if (window.PlantPulseHybridStore) {
-        const item = catalogItems.find(c => c.id == catalogId) || {};
-        window.PlantPulseHybridStore.saveOrder({
-          catalog_id: catalogId,
-          catalog_name: item.name || 'Smart Sensor Kit',
-          plant_name: plantName,
-          plant_type: plantType,
-          price: item.price || '499.00',
-          shipping_name: shippingName,
-          shipping_phone: shippingPhone,
-          shipping_address: shippingAddress,
-          payment_method: selectedPaymentMethod,
-          emoji: item.emoji || '🌱'
-        });
-        showToast('🎉 Payment successful! Sensor order placed.', 'success');
-        closeCheckoutModal();
-        setTimeout(() => {
-          window.location.href = 'my-orders.html';
-        }, 1000);
-        return;
-      }
-      errEl.textContent = 'Connection error. Please try again.';
+      console.error('[PlantPulse Shop] Order placement network/server failure:', err);
+      errEl.textContent = 'Could not save order to shared database: ' + (err.message || 'Connection failed. Verify cloud backend is online.');
       errEl.className = 'alert-msg show error';
       payBtn.disabled = false;
       payBtn.textContent = '🔒 Pay & Place Sensor Order';

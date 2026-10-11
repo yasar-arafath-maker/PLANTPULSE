@@ -200,74 +200,7 @@
         emoji: '🪴'
       }
     ],
-    orders: [
-      {
-        id: 101,
-        user_id: 1,
-        plant_name: 'Damask Rose',
-        plant_type: 'Rose',
-        catalog_id: 1,
-        catalog_name: 'Rose Care Pro Sensor Kit',
-        price: '499.00',
-        shipping_name: 'Arun Kumar',
-        shipping_address: '14/2 Anna Nagar, Chennai',
-        shipping_phone: '9876543210',
-        payment_method: 'UPI / GPay',
-        payment_status: 'paid',
-        order_status: 'delivered',
-        assigned_sensor_id: 'SENS-ROSE-01',
-        sensor_api_key: 'key_rose_demo',
-        min_moisture_threshold: 45,
-        max_moisture_threshold: 75,
-        admin_notes: 'Calibrated for red soil',
-        emoji: '🌹',
-        created_at: new Date(Date.now() - 86400000 * 3).toISOString()
-      },
-      {
-        id: 102,
-        user_id: 1,
-        plant_name: 'Madurai Jasmine',
-        plant_type: 'Jasmine',
-        catalog_id: 2,
-        catalog_name: 'Jasmine Moisture Guard Sensor',
-        price: '449.00',
-        shipping_name: 'Arun Kumar',
-        shipping_address: '14/2 Anna Nagar, Chennai',
-        shipping_phone: '9876543210',
-        payment_method: 'UPI / PhonePe',
-        payment_status: 'paid',
-        order_status: 'shipped',
-        assigned_sensor_id: 'SENS-JASM-02',
-        sensor_api_key: 'key_jasm_demo',
-        min_moisture_threshold: 40,
-        max_moisture_threshold: 70,
-        admin_notes: 'Tested in electronics lab',
-        emoji: '🌸',
-        created_at: new Date(Date.now() - 86400000 * 1.5).toISOString()
-      },
-      {
-        id: 103,
-        user_id: 1,
-        plant_name: 'Peace Lily',
-        plant_type: 'Fern',
-        catalog_id: 4,
-        catalog_name: 'Fern & Tropical Plant Sensor',
-        price: '479.00',
-        shipping_name: 'Arun Kumar',
-        shipping_address: '14/2 Anna Nagar, Chennai',
-        shipping_phone: '9876543210',
-        payment_method: 'UPI / GPay',
-        payment_status: 'paid',
-        order_status: 'ordered',
-        assigned_sensor_id: null,
-        sensor_api_key: null,
-        min_moisture_threshold: 50,
-        max_moisture_threshold: 85,
-        admin_notes: null,
-        emoji: '🌿',
-        created_at: new Date(Date.now() - 3600000 * 2).toISOString()
-      }
-    ],
+    orders: [],
     alerts: [
       {
         id: 1,
@@ -350,55 +283,23 @@
       return store.catalog || DEFAULT_DATA.catalog;
     },
     getOrders: function () {
-      const store = getStore();
-      return store.orders || [];
+      console.warn('[PlantPulse] Local orders store is disabled to ensure cross-device consistency. Fetching from shared backend required.');
+      return [];
     },
-    saveOrder: function (orderData) {
-      const store = getStore();
-      const newOrder = Object.assign({}, orderData, {
-        id: (100 + store.orders.length + 1),
-        payment_status: 'paid',
-        order_status: 'ordered',
-        created_at: new Date().toISOString()
-      });
-      store.orders.unshift(newOrder);
-      saveStore(store);
-      return newOrder;
+    saveOrder: function () {
+      console.warn('[PlantPulse] Local order saving is disabled. Real orders must be persisted to the backend API.');
+      return null;
     },
-    codeSensor: function (orderId, sensorId, apiKey, minMoist, maxMoist, notes) {
-      const store = getStore();
-      const order = store.orders.find(o => o.id == orderId);
-      if (order) {
-        order.assigned_sensor_id = sensorId;
-        order.sensor_api_key = apiKey;
-        order.min_moisture_threshold = minMoist;
-        order.max_moisture_threshold = maxMoist;
-        order.admin_notes = notes;
-        order.order_status = 'coding_sensor';
-        saveStore(store);
-        return true;
-      }
+    codeSensor: function () {
+      console.warn('[PlantPulse] Local codeSensor is disabled. Sensor provisioning must be persisted to the backend API.');
       return false;
     },
-    updateOrderStatus: function (orderId, newStatus) {
-      const store = getStore();
-      const order = store.orders.find(o => o.id == orderId);
-      if (order) {
-        order.order_status = newStatus;
-        saveStore(store);
-        return true;
-      }
+    updateOrderStatus: function () {
+      console.warn('[PlantPulse] Local updateOrderStatus is disabled. Order updates must be persisted to the backend API.');
       return false;
     },
     getAdminStats: function () {
-      const store = getStore();
-      const orders = store.orders || [];
-      return {
-        pending_coding: orders.filter(o => o.order_status === 'ordered').length,
-        coded_orders: orders.filter(o => o.order_status === 'coding_sensor').length,
-        dispatched_orders: orders.filter(o => o.order_status === 'shipped').length,
-        total_orders: orders.length
-      };
+      return { pending_coding: 0, coded_orders: 0, dispatched_orders: 0, total_orders: 0 };
     },
     recordMoistureReading: function (plantId, sensorId, moistureLevel) {
       const store = getStore();
@@ -479,86 +380,13 @@
       return createJsonResponse({ success: true, catalog: store.getCatalog() });
     }
 
-    // 3. User Orders List
-    if (cleanUrl.includes('/orders/list.php')) {
-      return createJsonResponse({ success: true, orders: store.getOrders() });
-    }
-
-    // 4. Admin Orders & Stats
-    if (cleanUrl.includes('/admin/orders.php')) {
+    // Reject mock fallback for Order and Admin Management endpoints to enforce true backend persistence
+    if (cleanUrl.includes('/orders/') || cleanUrl.includes('/admin/')) {
       return createJsonResponse({
-        success: true,
-        stats: store.getAdminStats(),
-        orders: store.getOrders()
-      });
-    }
-
-    // 5. Alerts List
-    if (cleanUrl.includes('/alerts/list.php')) {
-      return createJsonResponse({ success: true, alerts: store.getAlerts() });
-    }
-
-    // 6. Alerts Mark Read
-    if (cleanUrl.includes('/alerts/mark_read.php')) {
-      return createJsonResponse({ success: true, message: 'Alerts marked read' });
-    }
-
-    // 7. Readings History
-    if (cleanUrl.includes('/readings/history.php')) {
-      return createJsonResponse({ success: true, readings: store.getReadings() });
-    }
-
-    // 8. Add Plant (POST)
-    if (cleanUrl.includes('/plants/add.php') && method === 'POST') {
-      try {
-        const body = options.body ? JSON.parse(options.body) : {};
-        const plant = store.savePlant(body);
-        return createJsonResponse({ success: true, message: 'Plant registered successfully', plant_id: plant.id });
-      } catch (e) {
-        return createJsonResponse({ success: true, message: 'Plant registered' });
-      }
-    }
-
-    // 9. Delete Plant (POST/DELETE)
-    if (cleanUrl.includes('/plants/delete.php')) {
-      try {
-        const body = options.body ? JSON.parse(options.body) : {};
-        store.deletePlant(body.plant_id || body.id);
-      } catch (e) {}
-      return createJsonResponse({ success: true, message: 'Plant deleted' });
-    }
-
-    // 10. Create Order (POST)
-    if (cleanUrl.includes('/orders/create.php') && method === 'POST') {
-      try {
-        const body = options.body ? JSON.parse(options.body) : {};
-        const order = store.saveOrder(body);
-        return createJsonResponse({ success: true, message: 'Order placed successfully', order_id: order.id });
-      } catch (e) {
-        return createJsonResponse({ success: true, message: 'Order placed' });
-      }
-    }
-
-    // 11. Admin Code Sensor (POST)
-    if (cleanUrl.includes('/admin/code_sensor.php') && method === 'POST') {
-      try {
-        const body = options.body ? JSON.parse(options.body) : {};
-        store.codeSensor(body.order_id, body.sensor_id, body.api_key, body.min_moisture_threshold, body.max_moisture_threshold, body.admin_notes);
-        return createJsonResponse({ success: true, message: '🎉 Sensor coded & provisions saved!' });
-      } catch (e) {
-        return createJsonResponse({ success: true, message: 'Sensor coded' });
-      }
-    }
-
-    // 12. Admin Update Status (POST)
-    if (cleanUrl.includes('/admin/update_status.php') && method === 'POST') {
-      try {
-        const body = options.body ? JSON.parse(options.body) : {};
-        store.updateOrderStatus(body.order_id, body.status);
-        return createJsonResponse({ success: true, message: 'Order status updated successfully' });
-      } catch (e) {
-        return createJsonResponse({ success: true, message: 'Status updated' });
-      }
+        success: false,
+        error: 'BACKEND_NOT_CONFIGURED',
+        message: 'Order and Admin synchronization requires an active shared backend server with database.'
+      }, 503);
     }
 
     // 13. Simulate / Ingest Sensor (POST)
@@ -702,24 +530,38 @@
         options.credentials = 'include';
       }
 
+      const isOrderOrAdminCall = url.includes('/orders/') || url.includes('/admin/');
+
       try {
         const res = await _nativeFetch(resource, options);
         const contentType = res.headers.get('content-type') || '';
 
-        // If backend returned valid HTTP 200 JSON
-        if (res.ok && contentType.includes('application/json')) {
-          const clone = res.clone();
-          try {
-            const data = await clone.json();
-            if (data && data.success !== false) {
-              return res; // Live cloud API succeeded!
-            }
-          } catch (e) {}
+        // If backend returned JSON (status 200, 201, 400, 401, 403, 404, 429, 500)
+        if (contentType.includes('application/json')) {
+          return res;
         }
 
-        // If backend returned non-JSON (e.g. raw PHP text or HTML error page), seamlessly fallback
+        // For orders and admin management: never fabricate success or save to localStorage!
+        if (isOrderOrAdminCall) {
+          console.error('[PlantPulse] Shared backend returned non-JSON response from: ' + url);
+          return createJsonResponse({
+            success: false,
+            error: 'BACKEND_NOT_CONFIGURED',
+            message: 'Shared backend API unreachable. When running on GitHub Pages, configure your Cloud Backend API URL (e.g., InfinityFree or Render) to synchronize orders across devices.'
+          }, 503);
+        }
+
+        // If backend returned non-JSON (e.g. raw PHP text or HTML error page), fallback for read-only
         return synthesizeMockApiResponse(url, options);
       } catch (err) {
+        if (isOrderOrAdminCall) {
+          console.error('[PlantPulse] Network error for Order/Admin call: ' + url, err);
+          return createJsonResponse({
+            success: false,
+            error: 'NETWORK_FAILURE',
+            message: 'Could not connect to shared backend at ' + url + '. Please check network connection and Cloud API URL setting.'
+          }, 503);
+        }
         // Network offline, timeout, or DNS failure -> seamless fallback
         return synthesizeMockApiResponse(url, options);
       }

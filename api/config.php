@@ -85,7 +85,9 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 
 // ===== Token-Based Auth for Mobile WebView & Cloud API =====
-define('AUTH_SECRET_KEY', 'plantpulse_cloud_sec_token_2026');
+if (!defined('AUTH_SECRET_KEY')) {
+    define('AUTH_SECRET_KEY', getenv('AUTH_SECRET_KEY') ?: 'plantpulse_cloud_sec_token_2026');
+}
 
 function generateAuthToken($user) {
     $payload = [
