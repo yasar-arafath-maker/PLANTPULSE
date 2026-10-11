@@ -20,7 +20,7 @@
   <!-- Sidebar -->
   <aside class="sidebar">
     <div class="sidebar-logo">
-      <div class="logo-icon">🌿</div>
+      <div class="logo-icon"><img src="assets/plantpulse-logo.svg" alt="PlantPulse" /></div>
       <div>
         <div class="logo-name">PlantPulse</div>
         <div class="logo-tagline">Moisture Monitor</div>
@@ -68,9 +68,12 @@
   <!-- Main Content -->
   <main class="main-content">
     <div class="topbar">
-      <div>
-        <h1 class="page-title">Hardware Sensor Store 🛒</h1>
-        <p class="page-subtitle">Choose your plant and order a suitable custom-coded moisture sensor kit</p>
+      <div style="display:flex;align-items:center;gap:12px">
+        <button class="mobile-menu-btn" id="mobile-menu-toggle" aria-label="Open navigation menu">☰</button>
+        <div>
+          <h1 class="page-title">Hardware Sensor Store 🛒</h1>
+          <p class="page-subtitle">Choose your plant and order a suitable custom-coded moisture sensor kit</p>
+        </div>
       </div>
       <div class="topbar-actions">
         <a href="my-orders.html" class="btn btn-secondary">
@@ -105,10 +108,10 @@
 
 <!-- Checkout & Payment Modal -->
 <div class="modal-overlay" id="checkout-modal">
-  <div class="modal" style="max-width:580px">
+  <div class="modal" style="max-width:580px" role="dialog" aria-modal="true" aria-labelledby="checkout-modal-title">
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px">
-      <div class="modal-title" style="margin:0">🛒 Checkout & Payment (INR ₹)</div>
-      <button id="close-modal-btn" style="background:none; border:none; color:var(--text-3); font-size:20px; cursor:pointer">&times;</button>
+      <div class="modal-title" id="checkout-modal-title" style="margin:0">🛒 Checkout & Payment (INR ₹)</div>
+      <button id="close-modal-btn" aria-label="Close checkout modal" style="background:none; border:none; color:var(--text-3); font-size:24px; cursor:pointer; padding:4px 8px; line-height:1">&times;</button>
     </div>
 
     <div class="alert-msg" id="checkout-error"></div>

@@ -19,7 +19,7 @@
 <div class="auth-container">
   <div class="auth-card">
     <div class="auth-logo">
-      <div class="logo-icon">🌿</div>
+      <div class="logo-icon"><img src="assets/plantpulse-logo.svg" alt="PlantPulse" /></div>
       <div>
         <div class="logo-text">PlantPulse</div>
         <div class="logo-sub">Smart Moisture Monitor</div>
@@ -87,6 +87,7 @@
     e.preventDefault();
     const msgEl = document.getElementById('reg-msg');
     const btn   = document.getElementById('reg-btn');
+    if (btn.disabled) return;
 
     const name  = document.getElementById('reg-name').value.trim();
     const email = document.getElementById('reg-email').value.trim();

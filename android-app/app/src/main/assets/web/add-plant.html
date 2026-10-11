@@ -21,7 +21,7 @@
   <!-- Sidebar -->
   <aside class="sidebar">
     <div class="sidebar-logo">
-      <div class="logo-icon">🌿</div>
+      <div class="logo-icon"><img src="assets/plantpulse-logo.svg" alt="PlantPulse" /></div>
       <div>
         <div class="logo-name">PlantPulse</div>
         <div class="logo-tagline">Moisture Monitor</div>
@@ -69,15 +69,18 @@
   <!-- Main Content -->
   <main class="main-content">
     <div class="topbar">
-      <div>
-        <a href="dashboard.html" class="btn btn-secondary btn-sm" style="margin-bottom:12px;display:inline-flex">
-          ← Back to Dashboard
-        </a>
-        <h1 class="page-title">Add New Plant 🌱</h1>
-        <p class="page-subtitle">Register a plant and connect your soil moisture sensor.</p>
+      <div style="display:flex;align-items:flex-start;gap:12px">
+        <button class="mobile-menu-btn" id="mobile-menu-toggle" aria-label="Open navigation menu" style="margin-top:4px">☰</button>
+        <div>
+          <a href="dashboard.html" class="btn btn-secondary btn-sm" style="margin-bottom:12px;display:inline-flex">
+            ← Back to Dashboard
+          </a>
+          <h1 class="page-title">Add New Plant 🌱</h1>
+          <p class="page-subtitle">Register a plant and connect your soil moisture sensor.</p>
+        </div>
       </div>
       <div class="topbar-actions">
-        <div class="alert-bell" id="alert-bell">🔔
+        <div class="alert-bell" id="alert-bell" role="button" tabindex="0" aria-label="View notifications">🔔
           <div class="bell-badge" id="alert-badge"></div>
         </div>
       </div>
@@ -137,17 +140,17 @@
 
           <div class="form-row">
             <div class="form-group">
-              <label class="form-label">Min Moisture (Water Alert)</label>
+              <label class="form-label" for="min-moisture">Min Moisture (Water Alert)</label>
               <div class="range-slider-row">
-                <input type="range" id="min-moisture" min="5" max="80" value="40" />
+                <input type="range" id="min-moisture" min="5" max="80" value="40" aria-label="Minimum moisture alert threshold" />
                 <div class="range-value" id="min-val">40%</div>
               </div>
               <small style="color:var(--text-3);font-size:12px">Alert when moisture drops below this level</small>
             </div>
             <div class="form-group">
-              <label class="form-label">Max Moisture (Over-water Alert)</label>
+              <label class="form-label" for="max-moisture">Max Moisture (Over-water Alert)</label>
               <div class="range-slider-row">
-                <input type="range" id="max-moisture" min="20" max="100" value="70" />
+                <input type="range" id="max-moisture" min="20" max="100" value="70" aria-label="Maximum moisture alert threshold" />
                 <div class="range-value" id="max-val">70%</div>
               </div>
               <small style="color:var(--text-3);font-size:12px">Alert when moisture exceeds this level</small>

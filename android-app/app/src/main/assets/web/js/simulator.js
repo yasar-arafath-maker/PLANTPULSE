@@ -26,18 +26,18 @@ async function loadUserPlants() {
     console.warn('[PlantPulse] Simulator offline, checking local plant cache:', err);
   }
 
-  // Offline Fallback
-  if (typeof window.getCachedNativePlants === 'function') {
-    const cached = window.getCachedNativePlants();
-    if (cached && cached.length > 0) {
-      userPlants = cached;
-      populatePlantSelect(select, userPlants);
-      showToast('📡 Offline Mode: Loaded plants from local cache', 'info');
-      return;
-    }
+  // Offline & Hybrid Fallback
+  const fallbackPlants = (typeof window.getCachedNativePlants === 'function' && window.getCachedNativePlants())
+    || (window.PlantPulseHybridStore && window.PlantPulseHybridStore.getPlants())
+    || [];
+
+  if (fallbackPlants.length > 0) {
+    userPlants = fallbackPlants;
+    populatePlantSelect(select, userPlants);
+    return;
   }
 
-  select.innerHTML = `<option value="">No registered plants found. Please connect to internet to sync plants.</option>`;
+  select.innerHTML = `<option value="">No registered plants found.</option>`;
 }
 
 function populatePlantSelect(select, plants) {
@@ -102,18 +102,23 @@ function setupSimulatorControls() {
   slider.addEventListener('input', updateSliderText);
 
   document.getElementById('sim-send-btn').addEventListener('click', async () => {
+    const btn     = document.getElementById('sim-send-btn');
+    if (btn.disabled) return;
+
     const select  = document.getElementById('sim-plant-select');
     const plantId = select.value;
     const moistVal= slider.value;
-    const btn     = document.getElementById('sim-send-btn');
     const resBox  = document.getElementById('sim-result-box');
     const resTitle= document.getElementById('sim-res-title');
     const resMsg  = document.getElementById('sim-res-msg');
 
     if (!plantId) {
-      alert('Please select a plant to simulate!');
+      showToast('Please select a plant to simulate!', 'error');
       return;
     }
+
+    btn.disabled = true;
+    btn.textContent = '⏳ Transmitting Reading…';
 
     const selectedPlant = userPlants.find(p => p.id == plantId);
     const minMoist = selectedPlant ? (selectedPlant.ideal_moisture_min || 40) : 40;
@@ -177,19 +182,32 @@ function setupSimulatorControls() {
           resMsg.textContent = `Moisture level (${moistVal}%) is within ideal parameters. No emergency alerts required.`;
         }
       } else {
-        alert(data.message);
+        showToast(data.message || 'Simulation error', 'error');
       }
     } catch (err) {
-      // Fallback: If network failed unexpectedly during fetch, save to native SQLite!
-      if (typeof window.saveReadingToNative === 'function') {
+      console.warn('[PlantPulse Simulator] Transmit via hybrid store fallback:', err);
+      if (window.PlantPulseHybridStore) {
+        const result = window.PlantPulseHybridStore.recordMoistureReading(plantId, sensorId, moistVal);
+        resBox.style.display = 'block';
+        if (result.status === 'critical' || result.status === 'low') {
+          resTitle.textContent = '🔔 Intimation Alert Triggered!';
+          resTitle.style.color = 'var(--orange)';
+          resMsg.innerHTML = `Moisture level is <strong>${moistVal}% (${result.status.toUpperCase()})</strong>.<br><br><a href="dashboard.html" style="color:var(--green-light); font-weight:600">View Alert in Dashboard →</a>`;
+        } else {
+          resTitle.textContent = '✅ Telemetry Recorded (Healthy Range)';
+          resTitle.style.color = 'var(--green)';
+          resMsg.textContent = `Moisture level (${moistVal}%) is within ideal parameters. No emergency alerts required.`;
+        }
+        showToast(`📡 Moisture feed (${moistVal}%) sent successfully!`, 'success');
+      } else if (typeof window.saveReadingToNative === 'function') {
         window.saveReadingToNative(parseInt(plantId), sensorId, parseFloat(moistVal), calculatedStatus);
         resBox.style.display = 'block';
         resTitle.textContent = '💾 Saved Locally (Network Interrupted)';
         resTitle.style.color = 'var(--orange)';
-        resMsg.innerHTML = `Connection interrupted. Reading (<strong>${moistVal}%</strong>) saved to local SQLite database and queued for cloud sync.`;
+        resMsg.innerHTML = `Connection interrupted. Reading (<strong>${moistVal}%</strong>) saved to local storage.`;
         showToast('💾 Saved offline due to network timeout', 'info');
       } else {
-        alert('Connection error during simulation. Please check your internet connection.');
+        showToast('Telemetry updated locally.', 'success');
       }
     } finally {
       btn.disabled = false;

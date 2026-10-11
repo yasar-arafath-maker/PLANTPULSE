@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 108 108" fill="none">
+  <defs>
+    <linearGradient id="leafGrad" x1="30" y1="80" x2="75" y2="22" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#1EA848"/>
+      <stop offset="65%" stop-color="#3DDC6A"/>
+      <stop offset="100%" stop-color="#86EFAC"/>
+    </linearGradient>
+  </defs>
+  <path d="M38 77C28 63 34 43 50 29C52 27 55 24 58 23C73 31 84 49 78 70C74 80 52 83 38 77Z" fill="#0D2B16" fill-opacity="0.5"/>
+  <path d="M36 75C26 61 32 41 48 27C50 25 53 22 56 21C71 29 82 47 76 68C72 78 50 81 36 75Z" fill="url(#leafGrad)"/>
+  <path d="M36 75C26 61 32 41 48 27C50 25 53 22 56 21C71 29 82 47 76 68C72 78 50 81 36 75Z" stroke="#A7F3D0" stroke-width="1.2" stroke-opacity="0.85"/>
+  <path d="M36 75C33 81 29 86 25 88" stroke="#1EA848" stroke-width="2.5" stroke-linecap="round"/>
+  <path d="M36 75C45 63 51 46 56 21" stroke="#156B30" stroke-width="1.5" stroke-linecap="round"/>
+  <path d="M46 55C54 51 61 48 68 46" stroke="#156B30" stroke-width="1" stroke-linecap="round"/>
+  <path d="M42 65C48 64 58 63 65 65" stroke="#156B30" stroke-width="1" stroke-linecap="round"/>
+  <path d="M22 54L38 54L43 60L50 33L57 72L64 43L69 54L86 54" stroke="#3DDC6A" stroke-width="5" stroke-opacity="0.4" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M22 54L38 54L43 60L50 33L57 72L64 43L69 54L86 54" stroke="#0B1A0E" stroke-width="4.2" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M22 54L38 54L43 60L50 33L57 72L64 43L69 54L86 54" stroke="#FFFFFF" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="50" cy="33" r="2" fill="#86EFAC"/>
+  <circle cx="57" cy="72" r="2" fill="#86EFAC"/>
+</svg>

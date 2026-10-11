@@ -159,6 +159,16 @@ input, select, textarea { font-family: var(--font-main); }
   display: flex; align-items: center; justify-content: center;
   font-size: 24px;
   box-shadow: var(--shadow-green);
+  overflow: hidden;
+  padding: 4px;
+}
+
+.auth-logo .logo-icon img,
+.sidebar-logo .logo-icon img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
 }
 
 .auth-logo .logo-text {
@@ -267,6 +277,18 @@ select.form-control option {
 .btn-secondary:hover {
   background: var(--bg-card-hover);
   border-color: var(--border-strong);
+}
+
+.btn.active-filter {
+  background: var(--green-glow);
+  border-color: var(--green);
+  color: var(--green-light);
+  box-shadow: 0 0 12px var(--green-glow);
+}
+
+:focus-visible {
+  outline: 2px solid var(--green);
+  outline-offset: 2px;
 }
 
 .btn-danger {
@@ -477,6 +499,45 @@ select.form-control option {
   display: flex;
   align-items: center;
   gap: 12px;
+}
+
+/* ===== Mobile Navigation & Menu Button ===== */
+.mobile-menu-btn {
+  display: none;
+  width: 42px;
+  height: 42px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text-1);
+  font-size: 20px;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: var(--transition-fast);
+  flex-shrink: 0;
+}
+
+.mobile-menu-btn:hover {
+  background: var(--bg-card-hover);
+  border-color: var(--border-strong);
+}
+
+.sidebar-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  z-index: 99;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+
+.sidebar-backdrop.show {
+  opacity: 1;
+  pointer-events: auto;
 }
 
 /* ===== Alert Bell ===== */
@@ -1100,6 +1161,8 @@ select.form-control option {
   padding: 32px;
   width: 100%;
   max-width: 500px;
+  max-height: 90vh;
+  overflow-y: auto;
   box-shadow: var(--shadow);
   transform: translateY(20px);
   transition: var(--transition);
@@ -1122,31 +1185,65 @@ select.form-control option {
   margin-top: 24px;
 }
 
-/* ===== Responsive ===== */
+/* ===== Responsive Design (320px - 1024px) ===== */
 @media (max-width: 1024px) {
   .stats-row { grid-template-columns: repeat(2, 1fr); }
   .detail-grid { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 768px) {
+  .mobile-menu-btn { display: inline-flex; }
+
   .sidebar {
     transform: translateX(-100%);
     box-shadow: var(--shadow);
   }
 
   .sidebar.open { transform: translateX(0); }
-  .main-content { margin-left: 0; padding: 20px; }
+  .main-content {
+    margin-left: 0;
+    padding: 20px 16px;
+    padding-bottom: calc(72px + env(safe-area-inset-bottom));
+  }
 
-  .stats-row { grid-template-columns: repeat(2, 1fr); }
+  .stats-row { grid-template-columns: repeat(2, 1fr); gap: 12px; }
   .form-row  { grid-template-columns: 1fr; }
   .plant-type-grid { grid-template-columns: repeat(4, 1fr); }
-  .auth-card { padding: 32px 24px; }
+  .auth-card { padding: 32px 20px; }
+  .topbar { gap: 12px; flex-wrap: wrap; }
+  .topbar-actions { gap: 8px; flex-wrap: wrap; }
+  .page-title { font-size: clamp(22px, 5.5vw, 26px); }
 }
 
 @media (max-width: 480px) {
   .plants-grid { grid-template-columns: 1fr; }
-  .stats-row   { grid-template-columns: 1fr 1fr; }
+  .stats-row   { grid-template-columns: 1fr 1fr; gap: 10px; }
+  .stat-card   { padding: 16px 12px; }
+  .stat-val    { font-size: 20px; }
   .plant-type-grid { grid-template-columns: repeat(3, 1fr); }
+  .modal { padding: 20px 16px; border-radius: var(--radius-lg); width: 94vw; max-width: 94vw; }
+  .main-content { padding: 16px 12px; }
+  .plant-card { padding: 18px 14px; }
+  .gauge-container { gap: 14px; }
+  .gauge-wrap { width: 84px; height: 84px; }
+  .gauge-pct { font-size: 18px; }
+  .sim-presets { grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .sim-preset-btn { font-size: 11px; padding: 8px 4px; }
+}
+
+@media (max-width: 360px) {
+  .main-content { padding: 12px 8px; }
+  .stats-row { grid-template-columns: 1fr 1fr; gap: 8px; }
+  .stat-card { padding: 12px 8px; }
+  .stat-val { font-size: 18px; }
+  .stat-label { font-size: 10px; }
+  .plant-type-grid { grid-template-columns: repeat(2, 1fr); }
+  .sim-presets { grid-template-columns: 1fr 1fr; }
+  .gauge-container { gap: 10px; }
+  .gauge-wrap { width: 74px; height: 74px; }
+  .gauge-pct { font-size: 16px; }
+  .plant-name { font-size: 16px; }
+  .page-title { font-size: 20px; }
 }
 
 /* ===== Sensor code box ===== */

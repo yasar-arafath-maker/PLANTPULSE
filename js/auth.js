@@ -108,8 +108,18 @@ function showToast(message, type = 'success', duration = 4000) {
 }
 
 // ===== Logout =====
+let isLoggingOut = false;
 async function logout() {
-  await fetch(`${BASE_URL}/auth/logout.php`);
+  if (isLoggingOut) return;
+  isLoggingOut = true;
+  const btn = document.getElementById('logout-btn');
+  if (btn) {
+    btn.disabled = true;
+    btn.style.opacity = '0.5';
+  }
+  try {
+    await fetch(`${BASE_URL}/auth/logout.php`);
+  } catch (err) {}
   clearUser();
   redirectTo('index.html');
 }
@@ -204,7 +214,74 @@ async function fetchAlertBadge() {
   } catch (err) {}
 }
 
+// ===== Mobile Sidebar Toggle & Accessibility =====
+function setupMobileMenu() {
+  const sidebar = document.querySelector('.sidebar');
+  if (!sidebar) return;
+
+  let backdrop = document.querySelector('.sidebar-backdrop');
+  if (!backdrop) {
+    backdrop = document.createElement('div');
+    backdrop.className = 'sidebar-backdrop';
+    document.body.appendChild(backdrop);
+  }
+
+  const toggleSidebar = (open) => {
+    const shouldOpen = open !== undefined ? open : !sidebar.classList.contains('open');
+    sidebar.classList.toggle('open', shouldOpen);
+    backdrop.classList.toggle('show', shouldOpen);
+    document.body.style.overflow = shouldOpen && window.innerWidth <= 768 ? 'hidden' : '';
+  };
+
+  window.toggleMobileSidebar = toggleSidebar;
+
+  document.querySelectorAll('.mobile-menu-btn').forEach(btn => {
+    btn.setAttribute('aria-label', 'Toggle navigation menu');
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      toggleSidebar();
+    });
+  });
+
+  backdrop.addEventListener('click', () => toggleSidebar(false));
+
+  window.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      toggleSidebar(false);
+      document.querySelectorAll('.modal-overlay.open').forEach(m => m.classList.remove('open'));
+    }
+  });
+
+  sidebar.querySelectorAll('.nav-item').forEach(item => {
+    item.addEventListener('click', () => {
+      if (window.innerWidth <= 768 && item.id !== 'logout-btn') {
+        toggleSidebar(false);
+      }
+    });
+  });
+}
+
+// ===== Android Hardware Back Button Hook (Evaluated by MainActivity.kt) =====
+window.handleAndroidBackPressed = function() {
+  // 1. If any modal dialog is open, dismiss it first
+  const openModal = document.querySelector('.modal-overlay.open');
+  if (openModal) {
+    openModal.classList.remove('open');
+    return true;
+  }
+  // 2. If mobile sidebar drawer is open, close it
+  const sidebar = document.querySelector('.sidebar');
+  if (sidebar && sidebar.classList.contains('open')) {
+    sidebar.classList.remove('open');
+    document.querySelector('.sidebar-backdrop')?.classList.remove('show');
+    document.body.style.overflow = '';
+    return true;
+  }
+  return false;
+};
+
 document.addEventListener('DOMContentLoaded', () => {
   checkAuth();
+  setupMobileMenu();
   document.getElementById('logout-btn')?.addEventListener('click', logout);
 });

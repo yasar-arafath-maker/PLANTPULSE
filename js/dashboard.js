@@ -15,34 +15,28 @@ document.addEventListener('DOMContentLoaded', async () => {
   await loadPlants();
   startPolling();
 
-  // Alert bell click
-  document.getElementById('alert-bell')?.addEventListener('click', () => {
-    redirectTo('dashboard.html#alerts');
-    showAlertsPanel();
-  });
-
-  // Logout
   // Network listeners for offline sync
   window.addEventListener('online', () => {
     showToast('Internet connected. Refreshing live data...', 'success');
-    loadPlants();
+    loadPlants(true);
   });
   window.addEventListener('offline', () => {
     showToast('Offline Mode active. Reading from local storage.', 'info');
     updateSyncStatusUI();
   });
 
-  // Native sync completion callback from MainActivity
   window.onNativeSyncCompleted = (synced, failed) => {
     if (synced > 0) {
       showToast(`☁️ Cloud Sync: ${synced} readings synced!`, 'success');
     }
-    loadPlants();
+    loadPlants(true);
   };
 });
 
-async function loadPlants() {
-  showLoading(true);
+async function loadPlants(isBackground = false) {
+  if (!isBackground && plants.length === 0) {
+    showLoading(true);
+  }
   try {
     const res  = await fetch(`${BASE_URL}/plants/list.php`);
     const data = await res.json();
@@ -60,23 +54,24 @@ async function loadPlants() {
   } catch (err) {
     console.warn('[PlantPulse] Network request failed, checking offline cache:', err);
   } finally {
-    showLoading(false);
-  }
-
-  // Offline Fallback: Load from local SQLite cache!
-  if (typeof window.getCachedNativePlants === 'function') {
-    const cached = window.getCachedNativePlants();
-    if (cached && cached.length > 0) {
-      plants = cached;
-      renderStats(plants);
-      renderPlants(plants);
-      updateSyncStatusUI();
-      showToast('📡 Offline Mode: Showing cached plant records', 'info');
-      return;
+    if (!isBackground || plants.length === 0) {
+      showLoading(false);
     }
   }
 
-  showToast('Failed to load plants. Connect to internet or sync data.', 'error');
+  // Offline & Hybrid Fallback: Load from local SQLite or Universal Hybrid Store
+  const fallbackPlants = (typeof window.getCachedNativePlants === 'function' && window.getCachedNativePlants())
+    || (window.PlantPulseHybridStore && window.PlantPulseHybridStore.getPlants())
+    || [];
+
+  if (fallbackPlants.length > 0) {
+    plants = fallbackPlants;
+    renderStats(plants);
+    renderPlants(plants);
+    updateSyncStatusUI();
+    return;
+  }
+
   updateSyncStatusUI();
 }
 
@@ -239,18 +234,28 @@ function buildPlantCard(plant, index) {
     </div>`;
 }
 
-// ===== Delete confirmation =====
 function confirmDelete(plantId, plantName) {
   const overlay = document.getElementById('delete-modal');
   document.getElementById('delete-plant-name').textContent = plantName;
   overlay.classList.add('open');
 
-  document.getElementById('confirm-delete-btn').onclick = async () => {
-    overlay.classList.remove('open');
-    await deletePlant(plantId);
+  const confirmBtn = document.getElementById('confirm-delete-btn');
+  const cancelBtn  = document.getElementById('cancel-delete-btn');
+
+  confirmBtn.onclick = async () => {
+    if (confirmBtn.disabled) return;
+    confirmBtn.disabled = true;
+    confirmBtn.textContent = 'Deleting…';
+    try {
+      await deletePlant(plantId);
+    } finally {
+      confirmBtn.disabled = false;
+      confirmBtn.textContent = 'Yes, Delete';
+      overlay.classList.remove('open');
+    }
   };
 
-  document.getElementById('cancel-delete-btn').onclick = () => {
+  cancelBtn.onclick = () => {
     overlay.classList.remove('open');
   };
 }
@@ -281,8 +286,9 @@ async function showAlertsPanel() {
 
 // ===== Polling every 30s =====
 function startPolling() {
+  if (pollInterval) clearInterval(pollInterval);
   pollInterval = setInterval(async () => {
-    await loadPlants();
+    await loadPlants(true);
     fetchAlertBadge();
   }, 30000);
 }
@@ -292,5 +298,5 @@ function showLoading(show) {
   const spinner = document.getElementById('loading-spinner');
   const grid    = document.getElementById('plants-grid');
   if (spinner) spinner.style.display = show ? 'block' : 'none';
-  if (grid && show) grid.innerHTML = '';
+  if (grid && show && plants.length === 0) grid.innerHTML = '';
 }

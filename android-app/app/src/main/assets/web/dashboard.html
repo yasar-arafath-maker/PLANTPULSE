@@ -22,7 +22,7 @@
   <!-- Sidebar -->
   <aside class="sidebar">
     <div class="sidebar-logo">
-      <div class="logo-icon">🌿</div>
+      <div class="logo-icon"><img src="assets/plantpulse-logo.svg" alt="PlantPulse" /></div>
       <div>
         <div class="logo-name">PlantPulse</div>
         <div class="logo-tagline">Moisture Monitor</div>
@@ -72,12 +72,15 @@
 
     <!-- Top Bar -->
     <div class="topbar">
-      <div>
-        <h1 class="page-title">Your Plants 🌱</h1>
-        <p class="page-subtitle">Real-time soil moisture monitoring</p>
+      <div style="display:flex;align-items:center;gap:12px">
+        <button class="mobile-menu-btn" id="mobile-menu-toggle" aria-label="Open navigation menu">☰</button>
+        <div>
+          <h1 class="page-title">Your Plants 🌱</h1>
+          <p class="page-subtitle">Real-time soil moisture monitoring</p>
+        </div>
       </div>
       <div class="topbar-actions">
-        <div class="alert-bell" id="alert-bell" title="View Alerts">
+        <div class="alert-bell" id="alert-bell" title="View Alerts" role="button" tabindex="0" aria-label="View notifications">
           🔔
           <div class="bell-badge" id="alert-badge"></div>
         </div>
@@ -167,13 +170,14 @@
 <script>
   // Load alerts in the bottom section
   async function loadDashboardAlerts() {
+    const list = document.getElementById('alerts-list');
+    if (!list) return;
+
     try {
       const res  = await fetch(`${BASE_URL}/alerts/list.php`);
       const data = await res.json();
-      const list = document.getElementById('alerts-list');
-      if (!list) return;
 
-      if (!data.success || data.alerts.length === 0) {
+      if (!data.success || !data.alerts || data.alerts.length === 0) {
         list.innerHTML = `<p style="color:var(--text-3);font-size:14px;text-align:center;padding:24px">
           No alerts yet — your plants are happy! 🎉</p>`;
         return;
@@ -190,7 +194,25 @@
             </div>
           </div>`;
       }).join('');
-    } catch (err) {}
+    } catch (err) {
+      const fallbackAlerts = (window.PlantPulseHybridStore && window.PlantPulseHybridStore.getAlerts()) || [];
+      if (fallbackAlerts.length > 0) {
+        list.innerHTML = fallbackAlerts.slice(0, 15).map(alert => {
+          const icon = { critical:'🔴', low:'🟠', high:'🔵', info:'🟢' }[alert.alert_type] || '🔔';
+          return `
+            <div class="alert-item type-${alert.alert_type} ${alert.is_read==0?'unread':''}">
+              <div class="alert-icon">${icon}</div>
+              <div class="alert-content">
+                <div class="alert-text">${alert.plant_emoji || ''} ${alert.message}</div>
+                <div class="alert-time">${relativeTime(alert.created_at)}</div>
+              </div>
+            </div>`;
+        }).join('');
+      } else {
+        list.innerHTML = `<p style="color:var(--text-3);font-size:14px;text-align:center;padding:24px">
+          No alerts yet — your plants are happy! 🎉</p>`;
+      }
+    }
   }
 
   document.getElementById('mark-read-btn')?.addEventListener('click', async () => {

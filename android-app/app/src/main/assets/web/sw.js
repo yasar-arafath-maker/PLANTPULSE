@@ -1,4 +1,4 @@
-const CACHE_NAME = 'plantpulse-v1';
+const CACHE_NAME = 'plantpulse-v5';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
@@ -11,6 +11,7 @@ const ASSETS_TO_CACHE = [
   './admin.html',
   './simulator.html',
   './css/style.css',
+  './js/config.js',
   './js/auth.js',
   './js/dashboard.js',
   './js/plant-detail.js',
@@ -19,6 +20,9 @@ const ASSETS_TO_CACHE = [
   './js/my-orders.js',
   './js/admin.js',
   './js/simulator.js',
+  './assets/plantpulse-logo.svg',
+  './assets/icon-192.png',
+  './assets/icon-512.png',
   './manifest.json'
 ];
 
@@ -26,13 +30,13 @@ const ASSETS_TO_CACHE = [
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      console.log('[Service Worker] Caching static assets');
+      console.log('[Service Worker] Caching static assets v5');
       return cache.addAll(ASSETS_TO_CACHE);
     }).then(() => self.skipWaiting())
   );
 });
 
-// Activate Event
+// Activate Event - Clean up old caches immediately
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((cacheNames) => {
@@ -48,33 +52,30 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// Fetch Event
+// Fetch Event - Network-First Strategy to prevent stale cache bugs
 self.addEventListener('fetch', (event) => {
-  // Do not cache API endpoints - always fetch fresh data from server
+  // Do not intercept or cache API endpoints - always network
   if (event.request.url.includes('/api/')) {
-    return event.respondWith(fetch(event.request));
+    return;
   }
 
+  // Network-First for HTML, JS and CSS: fresh code always, cache fallback when offline
   event.respondWith(
-    caches.match(event.request).then((cachedResponse) => {
-      if (cachedResponse) {
-        return cachedResponse;
-      }
-      return fetch(event.request).then((networkResponse) => {
-        if (!networkResponse || networkResponse.status !== 200 || networkResponse.type !== 'basic') {
-          return networkResponse;
+    fetch(event.request)
+      .then((networkResponse) => {
+        if (networkResponse && networkResponse.status === 200) {
+          const clone = networkResponse.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
         }
-        const responseToCache = networkResponse.clone();
-        caches.open(CACHE_NAME).then((cache) => {
-          cache.put(event.request, responseToCache);
-        });
         return networkResponse;
-      });
-    }).catch(() => {
-      // Offline fallback
-      if (event.request.headers.get('accept').includes('text/html')) {
-        return caches.match('./index.html');
-      }
-    })
+      })
+      .catch(() => {
+        return caches.match(event.request).then((cached) => {
+          if (cached) return cached;
+          if (event.request.headers.get('accept') && event.request.headers.get('accept').includes('text/html')) {
+            return caches.match('./dashboard.html') || caches.match('./index.html');
+          }
+        });
+      })
   );
 });

@@ -13,21 +13,26 @@ async function loadUserOrders() {
     const data = await res.json();
     spinner.style.display = 'none';
 
-    if (!data.success || !data.orders || data.orders.length === 0) {
-      container.innerHTML = `
-        <div style="background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius-xl); padding:48px 24px; text-align:center">
-          <div style="font-size:48px; margin-bottom:12px">📦</div>
-          <h3 style="font-family:var(--font-head); font-size:20px; font-weight:700; margin-bottom:8px">No Sensor Orders Yet</h3>
-          <p style="color:var(--text-2); font-size:14px; margin-bottom:20px">Purchase a custom-coded sensor kit for your Rose, Jasmine, or other plants.</p>
-          <a href="shop.html" class="btn btn-primary">🛒 Visit Sensor Store</a>
-        </div>`;
+    if (data.success && data.orders && data.orders.length > 0) {
+      container.innerHTML = data.orders.map(order => renderOrderCard(order)).join('');
       return;
     }
-
-    container.innerHTML = data.orders.map(order => renderOrderCard(order)).join('');
   } catch (err) {
-    spinner.style.display = 'none';
-    container.innerHTML = `<p style="color:var(--red); text-align:center">Error loading your orders.</p>`;
+    console.warn('[PlantPulse Orders] API fallback to hybrid orders:', err);
+  }
+
+  spinner.style.display = 'none';
+  const fallbackOrders = (window.PlantPulseHybridStore && window.PlantPulseHybridStore.getOrders()) || [];
+  if (fallbackOrders.length > 0) {
+    container.innerHTML = fallbackOrders.map(order => renderOrderCard(order)).join('');
+  } else {
+    container.innerHTML = `
+      <div style="background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius-xl); padding:48px 24px; text-align:center">
+        <div style="font-size:48px; margin-bottom:12px">📦</div>
+        <h3 style="font-family:var(--font-head); font-size:20px; font-weight:700; margin-bottom:8px">No Sensor Orders Yet</h3>
+        <p style="color:var(--text-2); font-size:14px; margin-bottom:20px">Purchase a custom-coded sensor kit for your Rose, Jasmine, or other plants.</p>
+        <a href="shop.html" class="btn btn-primary">🛒 Visit Sensor Store</a>
+      </div>`;
   }
 }
 

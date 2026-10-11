@@ -46,6 +46,7 @@ class MainActivity : ComponentActivity() {
         nativeBridge = PlantPulseNativeBridge(this, DEFAULT_API_BASE_URL)
 
         webView = WebView(this).apply {
+            setBackgroundColor(android.graphics.Color.parseColor("#060E08"))
             settings.javaScriptEnabled = true
             settings.domStorageEnabled = true
             settings.databaseEnabled = true
@@ -57,9 +58,10 @@ class MainActivity : ComponentActivity() {
             settings.allowContentAccess = true
 
             // Enable Cookies for sessions & WebView
+            val wv = this
             CookieManager.getInstance().apply {
                 setAcceptCookie(true)
-                setAcceptThirdPartyCookies(this@apply, true)
+                setAcceptThirdPartyCookies(wv, true)
             }
 
             // Register Secure Native Bridge for Offline SQLite & Cloud Sync
@@ -143,8 +145,22 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onBackPressed() {
-        if (::webView.isInitialized && webView.canGoBack()) {
-            webView.goBack()
+        if (::webView.isInitialized) {
+            // Give web UI first priority to dismiss open modals or mobile drawer
+            webView.evaluateJavascript(
+                "(function() { return (typeof window.handleAndroidBackPressed === 'function' ? window.handleAndroidBackPressed() : false); })()"
+            ) { result ->
+                val handled = result == "true" || result == "\"true\""
+                if (!handled) {
+                    runOnUiThread {
+                        if (webView.canGoBack()) {
+                            webView.goBack()
+                        } else {
+                            super.onBackPressed()
+                        }
+                    }
+                }
+            }
         } else {
             super.onBackPressed()
         }

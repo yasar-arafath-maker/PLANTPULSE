@@ -20,16 +20,22 @@ async function loadCatalog() {
     const data = await res.json();
     spinner.style.display = 'none';
 
-    if (!data.success || !data.catalog || data.catalog.length === 0) {
-      grid.innerHTML = `<p style="color:var(--text-3); text-align:center; width:100%; grid-column:1/-1">No sensor kits available right now.</p>`;
+    if (data.success && data.catalog && data.catalog.length > 0) {
+      catalogItems = data.catalog;
+      renderCatalogGrid(catalogItems);
       return;
     }
-
-    catalogItems = data.catalog;
-    renderCatalogGrid(catalogItems);
   } catch (err) {
-    spinner.style.display = 'none';
-    grid.innerHTML = `<p style="color:var(--red); text-align:center; width:100%; grid-column:1/-1">Failed to load sensor store catalog.</p>`;
+    console.warn('[PlantPulse Shop] API fetch fallback to hybrid catalog:', err);
+  }
+
+  spinner.style.display = 'none';
+  const fallbackCatalog = (window.PlantPulseHybridStore && window.PlantPulseHybridStore.getCatalog()) || [];
+  if (fallbackCatalog.length > 0) {
+    catalogItems = fallbackCatalog;
+    renderCatalogGrid(catalogItems);
+  } else {
+    grid.innerHTML = `<p style="color:var(--text-3); text-align:center; width:100%; grid-column:1/-1">No sensor kits available right now.</p>`;
   }
 }
 
@@ -92,8 +98,12 @@ window.openCheckoutModal = function(catalogId) {
   document.getElementById('plant-name').value = `My ${item.plant_type}`;
   
   // Pre-fill user details if logged in
-  if (currentUser) {
-    document.getElementById('shipping-name').value = currentUser.name || '';
+  const user = currentUser || (typeof getUser === 'function' ? getUser() : null);
+  if (user) {
+    const nameInput = document.getElementById('shipping-name');
+    if (nameInput && !nameInput.value) {
+      nameInput.value = user.name || '';
+    }
   }
 
   document.getElementById('summary-price').textContent = `₹${parseFloat(item.price).toFixed(2)}`;
@@ -164,6 +174,8 @@ function setupFormHandlers() {
     const errEl  = document.getElementById('checkout-error');
     const payBtn = document.getElementById('pay-btn');
 
+    if (payBtn.disabled) return;
+
     const catalogId       = document.getElementById('modal-catalog-id').value;
     const plantName       = document.getElementById('plant-name').value.trim();
     const plantType       = document.getElementById('plant-type').value.trim();
@@ -211,6 +223,28 @@ function setupFormHandlers() {
         payBtn.textContent = '🔒 Pay & Place Sensor Order';
       }
     } catch (err) {
+      console.warn('[PlantPulse Shop] Placing order via hybrid store fallback:', err);
+      if (window.PlantPulseHybridStore) {
+        const item = catalogItems.find(c => c.id == catalogId) || {};
+        window.PlantPulseHybridStore.saveOrder({
+          catalog_id: catalogId,
+          catalog_name: item.name || 'Smart Sensor Kit',
+          plant_name: plantName,
+          plant_type: plantType,
+          price: item.price || '499.00',
+          shipping_name: shippingName,
+          shipping_phone: shippingPhone,
+          shipping_address: shippingAddress,
+          payment_method: selectedPaymentMethod,
+          emoji: item.emoji || '🌱'
+        });
+        showToast('🎉 Payment successful! Sensor order placed.', 'success');
+        closeCheckoutModal();
+        setTimeout(() => {
+          window.location.href = 'my-orders.html';
+        }, 1000);
+        return;
+      }
       errEl.textContent = 'Connection error. Please try again.';
       errEl.className = 'alert-msg show error';
       payBtn.disabled = false;

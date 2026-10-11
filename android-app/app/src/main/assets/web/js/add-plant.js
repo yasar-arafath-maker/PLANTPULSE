@@ -29,8 +29,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   setupRangeSliders();
   setupSensorIdGen();
   setupFormSubmit();
-
-  document.getElementById('logout-btn')?.addEventListener('click', logout);
 });
 
 // ===== Plant type selector =====
@@ -163,6 +161,20 @@ function setupFormSubmit() {
         submitBtn.textContent = '🌱 Add Plant';
       }
     } catch (err) {
+      console.warn('[PlantPulse Add Plant] Hybrid store fallback:', err);
+      if (window.PlantPulseHybridStore) {
+        const apiKey = 'key_' + Math.random().toString(36).substring(2, 10);
+        const newPlant = window.PlantPulseHybridStore.savePlant({
+          name, type, location,
+          ideal_moisture_min: minM,
+          ideal_moisture_max: maxM,
+          sensor_id: sensorId,
+          api_key: apiKey,
+          emoji: selectedEmoji
+        });
+        showApiKeyResult(newPlant);
+        return;
+      }
       errEl.textContent = 'Server error. Please try again.';
       errEl.classList.add('show', 'error');
       submitBtn.disabled = false;

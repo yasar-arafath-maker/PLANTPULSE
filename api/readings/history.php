@@ -4,7 +4,7 @@ requireAuth();
 
 $userId  = $_SESSION['user_id'];
 $plantId = intval($_GET['plant_id'] ?? 0);
-$limit   = intval($_GET['limit']    ?? 50);
+$limit   = max(1, min(200, intval($_GET['limit'] ?? 50)));
 
 if (!$plantId) {
     respond(['success' => false, 'message' => 'plant_id is required'], 400);
@@ -21,13 +21,13 @@ if (!$plant) {
 
 // Fetch readings newest-first, then reverse for chart
 $stmt = $pdo->prepare(
-    'SELECT id, client_uuid, moisture_level, status, timestamp
+    "SELECT id, client_uuid, moisture_level, status, timestamp
      FROM moisture_readings
      WHERE plant_id = ?
      ORDER BY timestamp DESC
-     LIMIT ?'
+     LIMIT $limit"
 );
-$stmt->execute([$plantId, $limit]);
+$stmt->execute([$plantId]);
 $readings = array_reverse($stmt->fetchAll());
 
 respond([

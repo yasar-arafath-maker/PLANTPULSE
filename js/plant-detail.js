@@ -23,8 +23,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   await loadAlerts();
 
   startPolling();
-
-  document.getElementById('logout-btn')?.addEventListener('click', logout);
 });
 
 // ===== Load latest plant data =====
@@ -43,20 +41,23 @@ async function loadDetail() {
     console.warn('[PlantPulse] Detail network error, checking cached plants:', err);
   }
 
-  // Offline Fallback: check cached plants
-  if (typeof window.getCachedNativePlants === 'function') {
-    const cached = window.getCachedNativePlants();
-    if (cached) {
-      const plant = cached.find(p => p.id == plantId);
-      if (plant) {
-        renderDetail(plant);
-        showToast('📡 Offline Mode: Loaded plant from local cache', 'info');
-        return;
-      }
-    }
+  // Offline & Hybrid Fallback: check cached plants
+  const fallbackList = (typeof window.getCachedNativePlants === 'function' && window.getCachedNativePlants())
+    || (window.PlantPulseHybridStore && window.PlantPulseHybridStore.getPlants())
+    || [];
+
+  const plant = fallbackList.find(p => p.id == plantId) || fallbackList[0];
+  if (plant) {
+    renderDetail(plant);
+    return;
   }
 
-  showToast('Failed to load plant data', 'error');
+  // Plant not found
+  const titleEl = document.getElementById('plant-name-detail');
+  if (titleEl) titleEl.textContent = 'Plant Not Found';
+  const typeEl = document.getElementById('plant-type-detail');
+  if (typeEl) typeEl.textContent = 'This plant may have been removed or does not exist.';
+  showToast('Plant record not found or inaccessible', 'error');
 }
 
 function renderDetail(plant) {
@@ -139,7 +140,22 @@ async function loadHistory() {
   // Sort chronologically for chart display
   combinedReadings.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
 
-  if (combinedReadings.length > 0) {
+  const chartCard = document.querySelector('.chart-card');
+  let emptyNotice = document.getElementById('chart-empty-notice');
+  const chartWrap = document.querySelector('.chart-wrap');
+
+  if (combinedReadings.length === 0) {
+    if (!emptyNotice && chartCard) {
+      emptyNotice = document.createElement('div');
+      emptyNotice.id = 'chart-empty-notice';
+      emptyNotice.style.cssText = 'color:var(--text-3);font-size:14px;text-align:center;padding:48px 16px';
+      emptyNotice.innerHTML = '🌱 No telemetry readings recorded yet.<br><span style="font-size:12px;color:var(--text-2);margin-top:6px;display:block">Transmitting sensor readings will display your moisture trend line.</span>';
+      chartCard.appendChild(emptyNotice);
+    }
+    if (chartWrap) chartWrap.style.display = 'none';
+  } else {
+    if (emptyNotice) emptyNotice.remove();
+    if (chartWrap) chartWrap.style.display = 'block';
     renderChart(combinedReadings);
   }
 }
@@ -228,19 +244,21 @@ function renderChart(readings) {
 
 // ===== Load alerts for this plant =====
 async function loadAlerts() {
+  const list = document.getElementById('alerts-list');
+  if (!list) return;
+
   try {
     const res  = await fetch(`${BASE_URL}/alerts/list.php`);
     const data = await res.json();
-    if (!data.success) return;
-
-    // Filter alerts for this plant
-    const plantAlerts = data.alerts.filter(a => {
-      // Match by plant name from list
-      return true; // show all alerts for now
-    });
+    if (!data.success || !data.alerts) {
+      list.innerHTML = `<p style="color:var(--text-3);font-size:14px;text-align:center;padding:24px">No alerts yet 🎉</p>`;
+      return;
+    }
 
     renderAlerts(data.alerts);
-  } catch (err) {}
+  } catch (err) {
+    list.innerHTML = `<p style="color:var(--text-3);font-size:14px;text-align:center;padding:24px">Alerts unavailable offline</p>`;
+  }
 }
 
 function renderAlerts(alerts) {

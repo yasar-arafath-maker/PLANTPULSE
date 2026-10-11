@@ -22,7 +22,7 @@
   <!-- Sidebar -->
   <aside class="sidebar">
     <div class="sidebar-logo">
-      <div class="logo-icon">🌿</div>
+      <div class="logo-icon"><img src="assets/plantpulse-logo.svg" alt="PlantPulse" /></div>
       <div>
         <div class="logo-name">PlantPulse</div>
         <div class="logo-tagline">Moisture Monitor</div>
@@ -72,15 +72,18 @@
 
     <!-- Top Bar -->
     <div class="topbar">
-      <div>
-        <a href="dashboard.html" class="btn btn-secondary btn-sm" style="margin-bottom:12px;display:inline-flex">
-          ← Back to Dashboard
-        </a>
-        <h1 class="page-title" id="plant-name-detail">Loading…</h1>
-        <p class="page-subtitle" id="plant-type-detail"></p>
+      <div style="display:flex;align-items:flex-start;gap:12px">
+        <button class="mobile-menu-btn" id="mobile-menu-toggle" aria-label="Open navigation menu" style="margin-top:4px">☰</button>
+        <div>
+          <a href="dashboard.html" class="btn btn-secondary btn-sm" style="margin-bottom:12px;display:inline-flex">
+            ← Back to Dashboard
+          </a>
+          <h1 class="page-title" id="plant-name-detail">Loading…</h1>
+          <p class="page-subtitle" id="plant-type-detail"></p>
+        </div>
       </div>
       <div class="topbar-actions">
-        <div class="alert-bell" id="alert-bell" title="Alerts">
+        <div class="alert-bell" id="alert-bell" title="Alerts" role="button" tabindex="0" aria-label="View notifications">
           🔔
           <div class="bell-badge" id="alert-badge"></div>
         </div>
