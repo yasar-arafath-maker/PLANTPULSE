@@ -575,12 +575,21 @@
     // 14. Auth Check
     if (cleanUrl.includes('/auth/check.php')) {
       const userRaw = localStorage.getItem('pm_user');
-      const user = userRaw ? JSON.parse(userRaw) : { id: 1, name: 'Plant Caretaker', email: 'buyer@example.com', role: 'user' };
-      return createJsonResponse({ authenticated: true, user: user });
+      if (userRaw) {
+        try {
+          const user = JSON.parse(userRaw);
+          if (user && user.id) {
+            return createJsonResponse({ authenticated: true, user: user });
+          }
+        } catch (e) {}
+      }
+      return createJsonResponse({ authenticated: false, user: null });
     }
 
     // 15. Auth Logout
     if (cleanUrl.includes('/auth/logout.php')) {
+      localStorage.removeItem('pm_user');
+      localStorage.removeItem('pm_token');
       return createJsonResponse({ success: true, message: 'Logged out' });
     }
 

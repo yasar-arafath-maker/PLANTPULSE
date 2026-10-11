@@ -112,17 +112,18 @@ let isLoggingOut = false;
 async function logout() {
   if (isLoggingOut) return;
   isLoggingOut = true;
-  const btn = document.getElementById('logout-btn');
-  if (btn) {
-    btn.disabled = true;
-    btn.style.opacity = '0.5';
-  }
+  document.querySelectorAll('#logout-btn, .logout-btn-trigger').forEach(b => {
+    b.disabled = true;
+    b.style.opacity = '0.5';
+  });
+  clearUser();
   try {
     await fetch(`${BASE_URL}/auth/logout.php`);
   } catch (err) {}
-  clearUser();
-  redirectTo('index.html');
+  sessionStorage.clear();
+  window.location.replace('index.html');
 }
+window.logout = logout;
 
 // ===== Moisture helpers =====
 function getMoistureColor(status) {
@@ -283,5 +284,7 @@ window.handleAndroidBackPressed = function() {
 document.addEventListener('DOMContentLoaded', () => {
   checkAuth();
   setupMobileMenu();
-  document.getElementById('logout-btn')?.addEventListener('click', logout);
+  document.querySelectorAll('#logout-btn, .logout-btn-trigger').forEach(btn => {
+    btn.addEventListener('click', logout);
+  });
 });
