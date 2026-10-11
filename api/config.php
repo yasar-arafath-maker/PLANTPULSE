@@ -35,7 +35,22 @@ $pass    = getenv('DB_PASS') !== false ? getenv('DB_PASS') : (getenv('MYSQLPASSW
 $port    = getenv('DB_PORT') ?: (getenv('MYSQLPORT') ?: '3306');
 $charset = 'utf8mb4';
 
-// 2. Dedicated Cloud config file fallback (InfinityFree / Alwaysdata / Hostinger / cPanel)
+// 2. Cloud connection URL parsing (Render, Railway, TiDB Cloud DATABASE_URL / MYSQL_URL)
+$dbUrl = getenv('DATABASE_URL') ?: getenv('MYSQL_URL');
+if ($dbUrl) {
+    $parsed = parse_url($dbUrl);
+    if ($parsed) {
+        $host = $parsed['host'] ?? $host;
+        $port = isset($parsed['port']) ? (string)$parsed['port'] : $port;
+        $user = $parsed['user'] ?? $user;
+        $pass = $parsed['pass'] ?? $pass;
+        if (!empty($parsed['path'])) {
+            $db = ltrim($parsed['path'], '/');
+        }
+    }
+}
+
+// 3. Dedicated Cloud config file fallback (InfinityFree / Alwaysdata / Hostinger / cPanel)
 if (file_exists(__DIR__ . '/cloud_config.php')) {
     include __DIR__ . '/cloud_config.php';
 }
@@ -47,6 +62,11 @@ $options = [
     PDO::ATTR_EMULATE_PREPARES   => false,
 ];
 
+// If connecting to external cloud database (TiDB Cloud / Aiven / SSL MySQL)
+if (defined('PDO::MYSQL_ATTR_SSL_VERIFY_SERVER_CERT')) {
+    $options[PDO::MYSQL_ATTR_SSL_VERIFY_SERVER_CERT] = false;
+}
+
 try {
     $pdo = new PDO($dsn, $user, $pass, $options);
 } catch (\PDOException $e) {
@@ -56,10 +76,11 @@ try {
         'success' => false,
         'message' => 'Database service temporarily unavailable. Please try again later.'
     ];
-    if (isset($_GET['debug'])) {
+    if (isset($_GET['debug']) || getenv('RENDER') || getenv('APP_DEBUG')) {
         $response['debug'] = [
             'cloud_config_loaded' => file_exists(__DIR__ . '/cloud_config.php'),
             'resolved_host'       => $host,
+            'resolved_port'       => $port,
             'resolved_database'   => $db,
             'resolved_user'       => $user,
             'pdo_error'           => $e->getMessage()

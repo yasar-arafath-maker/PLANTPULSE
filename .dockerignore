@@ -1,0 +1,10 @@
+.git
+.github
+android-app
+playstore_assets
+tests
+*.apk
+*.aab
+.idea
+.vscode
+*.log
